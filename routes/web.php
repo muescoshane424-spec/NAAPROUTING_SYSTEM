@@ -1,54 +1,95 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
-// Root redirects to login
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+// -------------------------
+// Login
+// -------------------------
 Route::get('/', function () {
-    return view('login'); // your login.blade.php
-})->name('login');
+    return view('login');
+})->name('home');
 
+Route::post('/login', function (Request $request) {
+    $credentials = $request->only('email', 'password');
+
+    // Basic placeholder auth (accept any non-empty values)
+    if (trim($credentials['email'] ?? '') !== '' && trim($credentials['password'] ?? '') !== '') {
+        session(['authenticated' => true, 'user_email' => $credentials['email']]);
+        return redirect()->route('dashboard');
+    }
+
+    return back()->with('error', 'Invalid credentials.')->withInput();
+})->name('login.submit');
+
+Route::get('/logout', function () {
+    session()->flush();
+    return redirect()->route('home');
+})->name('logout');
+
+// Middleware helper
+$authenticated = function () {
+    if (!session('authenticated', false)) {
+        return redirect()->route('home');
+    }
+    return null;
+};
+
+// -------------------------
 // Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard'); // create a dashboard.blade.php
-})->name('dashboard');
+// -------------------------
+Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
+// -------------------------
 // Documents
-Route::get('/documents', function () {
-    return view('documents.index'); // views/documents/index.blade.php
-})->name('documents.index');
-Route::get('/documents/create', function () {
-    return view('documents.create'); // views/documents/create.blade.php
-})->name('documents.create');
-Route::post('/documents/store', function () {
-    return redirect()->route('documents.index'); // just redirect for now
-})->name('documents.store');
+// -------------------------
+Route::get('/documents', [App\Http\Controllers\DocumentController::class, 'index'])->name('documents.index');
+Route::get('/documents/create', [App\Http\Controllers\DocumentController::class, 'create'])->name('documents.create');
+Route::post('/documents/store', [App\Http\Controllers\DocumentController::class, 'store'])->name('documents.store');
 
+// -------------------------
 // Routing
-Route::get('/routing', function () {
-    return view('routing'); // views/routing.blade.php
-})->name('routing.index');
+// -------------------------
+Route::get('/routing', [App\Http\Controllers\RoutingController::class, 'index'])->name('routing.index');
+Route::post('/routing/{document}', [App\Http\Controllers\RoutingController::class, 'routeDocument'])->name('routing.route');
 
+// -------------------------
 // QR Scanner
-Route::get('/qr-scan', function () {
-    return view('qr_scan'); // views/qr.blade.php
-})->name('qr.scan');
+// -------------------------
+Route::get('/qr-scan', [App\Http\Controllers\QRController::class, 'index'])->name('qr.scan');
+Route::post('/qr-scan', [App\Http\Controllers\QRController::class, 'scan'])->name('qr.scan.submit');
 
+// -------------------------
 // Offices
-Route::get('/offices', function () {
-    return view('offices'); // views/offices.blade.php
-})->name('offices.index');
+// -------------------------
+Route::get('/offices', [App\Http\Controllers\OfficeController::class, 'index'])->name('offices.index');
+Route::post('/offices', [App\Http\Controllers\OfficeController::class, 'store'])->name('offices.store');
 
+// -------------------------
 // Users
-Route::get('/users', function () {
-    return view('users'); // views/users.blade.php
-})->name('users.index');
+// -------------------------
+Route::get('/users', [App\Http\Controllers\UserController::class, 'index'])->name('users.index');
+Route::post('/users', [App\Http\Controllers\UserController::class, 'store'])->name('users.store');
 
+// -------------------------
 // Activity Log
+// -------------------------
 Route::get('/activity', function () {
-    return view('activity'); // views/activity.blade.php
+    $logs = App\Models\ActivityLog::latest()->paginate(15);
+    return view('activity', compact('logs')); 
 })->name('activity.index');
 
+// -------------------------
 // Reports
+// -------------------------
 Route::get('/reports', function () {
-    return view('reports'); // views/reports.blade.php
+    $byOffice = App\Models\Document::select('current_office_id', \DB::raw('count(*) as total'))->groupBy('current_office_id')->with('currentOffice')->get();
+    $docTime = App\Models\Document::select(\DB::raw('DATE(created_at) as date'), \DB::raw('count(*) as total'))->groupBy('date')->orderBy('date', 'desc')->limit(10)->get();
+    return view('reports', compact('byOffice', 'docTime')); 
 })->name('reports.index');

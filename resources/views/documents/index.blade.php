@@ -3,36 +3,45 @@
 @section('title','Documents')
 
 @section('content')
-<h1 class="text-2xl font-bold mb-6 text-cyan-400 animate-pulse">Documents</h1>
+<h1 class="text-2xl font-bold mb-6 text-cyan-400">Documents</h1>
 
 <div class="mb-4">
-    <a href="{{ route('documents.create') }}" class="bg-purple-500 hover:bg-purple-600 py-2 px-4 rounded-lg transition">Route New Document</a>
+    <a href="{{ route('documents.create') }}" class="btn btn-primary">Upload New Document</a>
 </div>
 
-<table class="min-w-full bg-white/10 backdrop-blur-lg rounded-xl overflow-hidden">
-    <thead class="bg-white/5">
-        <tr class="text-gray-300">
-            <th class="px-6 py-3">ID</th>
-            <th class="px-6 py-3">Title</th>
-            <th class="px-6 py-3">Status</th>
-            <th class="px-6 py-3">Actions</th>
+@if(session('success'))
+<div class="alert alert-success">{{ session('success') }}</div>
+@endif
+
+<table class="w-full">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Current Office</th>
+            <th>Status</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        @foreach ([
-            ['id'=>'001','title'=>'Document A','status'=>'In Transit','color'=>'text-purple-400'],
-            ['id'=>'002','title'=>'Document B','status'=>'Completed','color'=>'text-green-400'],
-            ['id'=>'003','title'=>'Document C','status'=>'Pending','color'=>'text-yellow-400'],
-        ] as $doc)
-        <tr class="hover:bg-white/20 transition">
-            <td class="px-6 py-3">{{$doc['id']}}</td>
-            <td class="px-6 py-3">{{$doc['title']}}</td>
-            <td class="px-6 py-3 font-bold {{$doc['color']}}">{{$doc['status']}}</td>
-            <td class="px-6 py-3">
-                <a href="{{ route('documents.create') }}" class="text-cyan-400 hover:underline">Route</a>
+        @foreach($documents as $doc)
+        <tr>
+            <td>{{ $doc->id }}</td>
+            <td>{{ $doc->title }}</td>
+            <td>{{ $doc->currentOffice->name ?? 'N/A' }}</td>
+            <td><span class="badge {{ $doc->status == 'completed' ? 'success' : ($doc->status == 'in_transit' ? 'info' : 'warning') }}">{{ ucfirst(str_replace('_', ' ', $doc->status)) }}</span></td>
+            <td>{{ $doc->created_at->diffForHumans() }}</td>
+            <td>
+                <a href="{{ route('routing.index') }}" class="text-cyan-400 hover:underline">Track</a>
+                @if($doc->file_path)
+                | <a href="{{ Storage::url($doc->file_path) }}" target="_blank" class="text-cyan-400 hover:underline">Download</a>
+                @endif
             </td>
         </tr>
         @endforeach
     </tbody>
 </table>
+
+{{ $documents->links() }}
 @endsection

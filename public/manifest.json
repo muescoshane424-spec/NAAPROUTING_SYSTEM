@@ -1,0 +1,15 @@
+{
+    "name": "NAAP Routing System",
+    "short_name": "NAAP",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#020617",
+    "theme_color": "#3b82f6",
+    "icons": [
+        {
+            "src": "/images/logo.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

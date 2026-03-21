@@ -136,6 +136,15 @@
         .dashboard-header { flex-direction:column; align-items:flex-start; gap:8px; }
         .chart-header { flex-direction:column; align-items:flex-start; gap:8px; }
     }
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3b82f6">
+<link rel="apple-touch-icon" href="/images/logo.png">
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+    }
+</script>
 </style>
 </head>
 <body>

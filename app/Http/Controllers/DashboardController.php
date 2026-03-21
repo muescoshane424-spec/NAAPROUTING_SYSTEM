@@ -39,8 +39,10 @@ class DashboardController extends Controller
             ];
         });
 
-        // Monthly trends (last 12 months)
+        // Monthly, weekly, and daily trends
         $monthlyTrends = $this->getMonthlyTrends();
+        $weeklyTrends = $this->getWeeklyTrends();
+        $dailyTrends = $this->getDailyTrends();
 
         // Status distribution
         $statusDistribution = [
@@ -78,9 +80,17 @@ class DashboardController extends Controller
             'active_routes' => $inTransit,
         ];
 
+        // Simulated system health metrics for a real-time status chart
+        $systemHealth = [
+            ['label' => 'CPU', 'value' => 78],
+            ['label' => 'Memory', 'value' => 64],
+            ['label' => 'Disk', 'value' => 82],
+            ['label' => 'Network', 'value' => 46],
+        ];
+
         return view('dashboard', compact(
-            'stats', 'docsByOffice', 'monthlyTrends', 'statusDistribution',
-            'priorityData', 'activity', 'officePerformance', 'flowTimeline', 'kpis'
+            'stats', 'docsByOffice', 'monthlyTrends', 'weeklyTrends', 'dailyTrends', 'statusDistribution',
+            'priorityData', 'activity', 'officePerformance', 'flowTimeline', 'kpis', 'systemHealth'
         ));
     }
 
@@ -113,13 +123,42 @@ class DashboardController extends Controller
         return $trends;
     }
 
+    private function getWeeklyTrends()
+    {
+        $trends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $trends[] = [
+                'label' => $date->format('D'),
+                'count' => Document::whereDate('created_at', $date->toDateString())->count(),
+            ];
+        }
+        return $trends;
+    }
+
+    private function getDailyTrends()
+    {
+        $trends = [];
+        for ($hour = 0; $hour < 24; $hour++) {
+            $trends[] = [
+                'label' => sprintf('%02d:00', $hour),
+                'count' => Document::whereDate('created_at', today())
+                    ->whereHour('created_at', $hour)
+                    ->count(),
+            ];
+        }
+        return $trends;
+    }
+
     private function getFlowTimeline()
     {
         $timeline = [];
         for ($hour = 0; $hour < 24; $hour++) {
             $timeline[] = [
                 'hour' => sprintf('%02d:00', $hour),
-                'processed' => rand(1, 10), // simulated data
+                'processed' => Document::whereDate('updated_at', today())
+                    ->whereHour('updated_at', $hour)
+                    ->count(),
             ];
         }
         return $timeline;

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Http\Request;
 
 /*
@@ -23,15 +24,17 @@ Route::post('/login', function (Request $request) {
     if (trim($credentials['email'] ?? '') !== '' && trim($credentials['password'] ?? '') !== '') {
         session(['authenticated' => true, 'user_email' => $credentials['email']]);
         
-        // Log login history
-        App\Models\LoginHistory::create([
-            'email' => $credentials['email'],
-            'ip_address' => $request->ip(),
-            'device' => $request->userAgent(),
-            'user_agent' => $request->header('User-Agent'),
-            'login_time' => now(),
-        ]);
-        
+        // Log login history (if table exists)
+        if (Schema::hasTable('login_histories')) {
+            App\Models\LoginHistory::create([
+                'email' => $credentials['email'],
+                'ip_address' => $request->ip(),
+                'device' => $request->userAgent(),
+                'user_agent' => $request->header('User-Agent'),
+                'login_time' => now(),
+            ]);
+        }
+
         return redirect()->route('dashboard');
     }
 

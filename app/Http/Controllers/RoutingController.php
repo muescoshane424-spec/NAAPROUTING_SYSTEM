@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use App\Models\Document;
+use App\Models\Office;
 use App\Models\DocumentRouting;
 use App\Models\ActivityLog;
-use App\Models\Office;
-use Illuminate\Http\Request;
 
 class RoutingController extends Controller
 {
@@ -17,7 +19,9 @@ class RoutingController extends Controller
         }
 
         $documents = Document::with(['originOffice', 'currentOffice', 'destinationOffice'])->latest()->paginate(10);
-        $offices = Office::all();
+        $offices = Cache::remember('offices', 3600, function () {
+            return Office::all();
+        });
         return view('routing', compact('documents', 'offices'));
     }
 
@@ -32,17 +36,19 @@ class RoutingController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $document->update(['current_office_id' => $request->next_office_id, 'status' => 'in_transit']);
+        DB::transaction(function () use ($request, $document) {
+            $document->update(['current_office_id' => $request->next_office_id, 'status' => 'in_transit']);
 
-        DocumentRouting::create([
-            'document_id' => $document->id,
-            'from_office_id' => $document->current_office_id,
-            'to_office_id' => $request->next_office_id,
-            'status' => 'transferred',
-            'notes' => $request->notes,
-        ]);
+            DocumentRouting::create([
+                'document_id' => $document->id,
+                'from_office_id' => $document->current_office_id,
+                'to_office_id' => $request->next_office_id,
+                'status' => 'transferred',
+                'notes' => $request->notes,
+            ]);
 
-        ActivityLog::create(['user' => session('user_email', 'anon'), 'action' => 'Routed document', 'document_id' => $document->id, 'ip' => $request->ip(), 'meta' => ['to_office' => $request->next_office_id]]);
+            ActivityLog::create(['user' => session('user_email', 'anon'), 'action' => 'Routed document', 'document_id' => $document->id, 'ip' => $request->ip(), 'meta' => ['to_office' => $request->next_office_id]]);
+        });
 
         return back()->with('success', 'Document was routed successfully.');
     }

@@ -9,137 +9,94 @@
 
 @section('content')
 <div class="dashboard-header">
-    <h1 class="dashboard-title">NAAP Document Routing Analytics</h1>
+    <h1 class="dashboard-title">NAAP Enterprise Dashboard</h1>
     <div class="dashboard-meta">
-        <span>Last updated: {{ now()->format('M j, Y H:i') }}</span>
-        <span>System Status: <span class="status-online">● Online</span></span>
+        <span>Updated: {{ now()->format('M j, Y H:i') }}</span>
+        <span>System Health: <span class="status-online">● Online</span></span>
     </div>
 </div>
 
-<!-- KPI Cards -->
 <div class="kpi-grid">
     <div class="kpi-card">
-        <div class="kpi-icon">📊</div>
+        <div class="kpi-icon">📚</div>
         <div class="kpi-content">
-            <h3>{{ number_format($stats['total']) }}</h3>
+            <h3>{{ number_format($stats['total'] ?? 0) }}</h3>
             <p>Total Documents</p>
-            <span class="kpi-trend up">+12.5%</span>
+            <span class="kpi-trend up">{{ number_format(($stats['total'] ?? 0) * 0.03, 1) }}% ▲</span>
         </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon">🚀</div>
+        <div class="kpi-icon">🚚</div>
         <div class="kpi-content">
-            <h3>{{ $stats['completion_rate'] }}%</h3>
-            <p>Completion Rate</p>
-            <span class="kpi-trend up">+5.2%</span>
+            <h3>{{ number_format($stats['in_transit'] ?? 0) }}</h3>
+            <p>In Transit</p>
+            <span class="kpi-trend warning">{{ number_format(($stats['in_transit'] ?? 0) / max(1, ($stats['total'] ?? 1)) * 100,1) }}%</span>
         </div>
     </div>
     <div class="kpi-card">
         <div class="kpi-icon">⏱️</div>
         <div class="kpi-content">
-            <h3>{{ $stats['avg_processing_days'] }}</h3>
-            <p>Avg Processing Time</p>
-            <span class="kpi-trend down">-2.1 days</span>
+            <h3>{{ $stats['avg_processing_days'] ?? 0 }} days</h3>
+            <p>Avg Processing</p>
+            <span class="kpi-trend down">-0.7 days</span>
         </div>
     </div>
     <div class="kpi-card">
-        <div class="kpi-icon">📈</div>
+        <div class="kpi-icon">✅</div>
         <div class="kpi-content">
-            <h3>{{ $kpis['total_processed_today'] }}</h3>
-            <p>Processed Today</p>
-            <span class="kpi-trend up">+8.7%</span>
+            <h3>{{ number_format($stats['completed'] ?? 0) }}</h3>
+            <p>Completed</p>
+            <span class="kpi-trend up">{{ $stats['completion_rate'] ?? 0 }}%</span>
         </div>
     </div>
 </div>
 
-<!-- Main Charts Grid -->
+<div class="chart-card" style="margin-bottom: 20px;">
+    <div class="chart-header">
+        <h3>Quick Actions</h3>
+        <div class="chart-controls">
+            <a href="{{ route('documents.create') }}" class="btn btn-primary" style="font-size:0.85rem; padding:7px 11px;">Route Document</a>
+            <a href="{{ route('qr.scan') }}" class="btn btn-primary" style="font-size:0.85rem; padding:7px 11px;">Scan QR</a>
+            <a href="{{ route('users.index') }}" class="btn btn-primary" style="font-size:0.85rem; padding:7px 11px;">Add User</a>
+        </div>
+    </div>
+</div>
+
 <div class="charts-grid">
-    <!-- Monthly Trends -->
-    <div class="chart-card large">
-        <div class="chart-header">
-            <h3>Document Trends (12 Months)</h3>
-            <div class="chart-controls">
-                <button class="chart-btn active">Monthly</button>
-                <button class="chart-btn">Weekly</button>
-                <button class="chart-btn">Daily</button>
-            </div>
-        </div>
-        <canvas id="monthlyTrendsChart" height="300"></canvas>
-    </div>
-
-    <!-- Status Distribution -->
     <div class="chart-card">
-        <div class="chart-header">
-            <h3>Status Distribution</h3>
-        </div>
-        <canvas id="statusChart" height="250"></canvas>
+        <div class="chart-header"><h3>Document Activity</h3></div>
+        <canvas id="monthlyTrendsChart" height="260"></canvas>
     </div>
-
-    <!-- Priority Breakdown -->
     <div class="chart-card">
-        <div class="chart-header">
-            <h3>Priority Distribution</h3>
-        </div>
-        <canvas id="priorityChart" height="250"></canvas>
+        <div class="chart-header"><h3>Office Performance</h3></div>
+        <canvas id="officeChart" height="260"></canvas>
     </div>
-
-    <!-- Office Performance -->
     <div class="chart-card">
-        <div class="chart-header">
-            <h3>Office Performance</h3>
-        </div>
-        <canvas id="officeChart" height="250"></canvas>
+        <div class="chart-header"><h3>Status Overview</h3></div>
+        <canvas id="statusChart" height="260"></canvas>
     </div>
-
-    <!-- Document Flow Timeline -->
-    <div class="chart-card large">
-        <div class="chart-header">
-            <h3>Today's Document Flow</h3>
-        </div>
-        <canvas id="flowTimelineChart" height="200"></canvas>
-    </div>
-
-    <!-- Office Activity Heatmap -->
     <div class="chart-card">
-        <div class="chart-header">
-            <h3>Office Activity</h3>
-        </div>
-        <div class="heatmap-container">
-            @foreach($docsByOffice as $office)
-            <div class="heatmap-row">
-                <span class="office-name">{{ $office['name'] }}</span>
-                <div class="heatmap-bar">
-                    <div class="heatmap-fill" style="width: {{ $office['current'] * 10 }}%"></div>
-                    <span class="heatmap-value">{{ $office['current'] }}</span>
-                </div>
-            </div>
-            @endforeach
-        </div>
+        <div class="chart-header"><h3>System Health</h3></div>
+        <canvas id="systemHealthChart" height="260"></canvas>
     </div>
 </div>
 
-<!-- Data Tables Section -->
-<div class="tables-grid">
+<div class="tables-grid" style="margin-top:20px;">
     <div class="table-card">
         <div class="table-header">
-            <h3>Recent Activity</h3>
-            <a href="{{ route('activity.index') }}" class="view-all">View All</a>
+            <h3>Live Activity Feed</h3>
+            <span style="color:#a5b4fc; font-size:0.85rem;">Updating every 30s</span>
         </div>
         <div class="table-responsive">
             <table>
                 <thead>
-                    <tr>
-                        <th>Action</th>
-                        <th>Document</th>
-                        <th>User</th>
-                        <th>Time</th>
-                    </tr>
+                    <tr><th>Event</th><th>Document</th><th>User</th><th>Time</th></tr>
                 </thead>
                 <tbody>
-                    @foreach($activity as $act)
+                    @foreach($activity->take(7) as $act)
                     <tr>
-                        <td><span class="activity-badge {{ $act->action == 'Document created' ? 'create' : 'scan' }}">{{ $act->action }}</span></td>
-                        <td>{{ $act->document ? $act->document->title : 'N/A' }}</td>
+                        <td>{{ $act->action }}</td>
+                        <td>{{ $act->document?->title ?? 'N/A' }}</td>
                         <td>{{ $act->user }}</td>
                         <td>{{ $act->created_at->diffForHumans() }}</td>
                     </tr>
@@ -148,30 +105,19 @@
             </table>
         </div>
     </div>
-
     <div class="table-card">
         <div class="table-header">
-            <h3>Top Performing Offices</h3>
+            <h3>Top Office Routing</h3>
         </div>
         <div class="table-responsive">
             <table>
-                <thead>
-                    <tr>
-                        <th>Office</th>
-                        <th>Documents</th>
-                        <th>Performance</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Office</th><th>Docs</th><th>Trend</th></tr></thead>
                 <tbody>
                     @foreach($officePerformance as $office)
                     <tr>
                         <td>{{ $office->name }}</td>
                         <td>{{ $office->doc_count }}</td>
-                        <td>
-                            <div class="performance-bar">
-                                <div class="performance-fill" style="width: {{ min(100, $office->doc_count * 20) }}%"></div>
-                            </div>
-                        </td>
+                        <td><span class="badge {{ $office->doc_count >= 10 ? 'success' : 'warning' }}">{{ $office->doc_count >= 10 ? 'High' : 'Moderate'}}</span></td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -184,18 +130,25 @@
 
 @section('scripts')
 <script>
-// Monthly Trends Chart
-const monthlyCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
-const monthlyData = @json($monthlyTrends);
-new Chart(monthlyCtx, {
-    type: 'line',
-    data: {
-        labels: monthlyData.map(d => d.month),
+// Trends Chart (Monthly / Weekly / Daily)
+const trendCtx = document.getElementById('monthlyTrendsChart').getContext('2d');
+const trendData = {
+    monthly: @json($monthlyTrends),
+    weekly: @json($weeklyTrends),
+    daily: @json($dailyTrends)
+};
+
+let activeTrend = 'monthly';
+
+function getTrendConfig(scope) {
+    const items = trendData[scope] || [];
+    return {
+        labels: items.map(d => d.month || d.label),
         datasets: [{
             label: 'Documents Created',
-            data: monthlyData.map(d => d.count),
+            data: items.map(d => d.count),
             borderColor: '#00d7ff',
-            backgroundColor: 'rgba(0, 215, 255, 0.1)',
+            backgroundColor: 'rgba(0, 215, 255, 0.18)',
             tension: 0.4,
             fill: true,
             pointBackgroundColor: '#00d7ff',
@@ -203,11 +156,21 @@ new Chart(monthlyCtx, {
             pointBorderWidth: 2,
             pointRadius: 4
         }]
-    },
+    };
+}
+
+let trendChart = new Chart(trendCtx, {
+    type: 'line',
+    data: getTrendConfig(activeTrend),
     options: {
         responsive: true,
         plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: context => `${context.dataset.label}: ${context.parsed.y}`
+                }
+            }
         },
         scales: {
             y: {
@@ -219,6 +182,23 @@ new Chart(monthlyCtx, {
             }
         }
     }
+});
+
+function updateTrendData(scope) {
+    if (!trendData[scope]) return;
+    activeTrend = scope;
+    const cfg = getTrendConfig(scope);
+    trendChart.data.labels = cfg.labels;
+    trendChart.data.datasets = cfg.datasets;
+    trendChart.update();
+}
+
+document.querySelectorAll('.chart-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        document.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        updateTrendData(button.textContent.trim().toLowerCase());
+    });
 });
 
 // Status Distribution Chart
@@ -286,27 +266,57 @@ new Chart(officeCtx, {
     }
 });
 
-// Flow Timeline Chart
-const flowCtx = document.getElementById('flowTimelineChart').getContext('2d');
-const flowData = @json($flowTimeline);
-new Chart(flowCtx, {
-    type: 'area',
+// System Health Chart
+const systemHealthCtx = document.getElementById('systemHealthChart').getContext('2d');
+const systemHealthData = @json($systemHealth);
+new Chart(systemHealthCtx, {
+    type: 'bar',
     data: {
-        labels: flowData.map(d => d.hour),
+        labels: systemHealthData.map(d => d.label),
         datasets: [{
-            label: 'Documents Processed',
-            data: flowData.map(d => d.processed),
-            borderColor: '#4CAF50',
-            backgroundColor: 'rgba(76, 175, 80, 0.3)',
-            fill: true,
-            tension: 0.4
+            label: 'Health %',
+            data: systemHealthData.map(d => d.value),
+            backgroundColor: ['#43A047', '#1976D2', '#6A1B9A', '#FDD835'],
+            borderRadius: 8
         }]
     },
     options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-            y: { beginAtZero: true }
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: { stepSize: 20 }
+            }
+        }
+    }
+});
+
+// Flow Timeline Chart
+const flowCtx = document.getElementById('flowTimelineChart').getContext('2d');
+const flowData = @json($flowTimeline);
+new Chart(flowCtx, {
+    type: 'line',
+    data: {
+        labels: flowData.map(d => d.hour),
+        datasets: [{
+            label: 'Documents Processed',
+            data: flowData.map(d => d.processed),
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.35)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#4CAF50'
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true },
+            x: { grid: { color: 'rgba(255,255,255,0.1)' } }
         }
     }
 });

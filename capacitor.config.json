@@ -1,0 +1,12 @@
+{
+  "appId": "com.naap.routing",
+  "appName": "NAAP Routing System",
+  "webDir": "public",
+  "server": {
+  "url": "https://unplaying-goodly-ines.ngrok-free.dev",
+  "cleartext": true
+},
+  "android": {
+    "allowMixedContent": true
+  }
+}

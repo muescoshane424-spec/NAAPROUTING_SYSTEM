@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NAAP Routing System</string>
+    <string name="title_activity_main">NAAP Routing System</string>
+    <string name="package_name">com.naap.routing</string>
+    <string name="custom_url_scheme">com.naap.routing</string>
+</resources>

@@ -1,85 +1,131 @@
 @extends('layouts.app')
 
-@section('title','Route Document')
+@section('title','New Document Routing')
 
 @section('content')
-<div class="main-header" style="justify-content:space-between;">
-    <div>
-        <h2 style="margin:0;">Route Document</h2>
-        <p style="color:var(--text); opacity:0.8; margin:4px 0;">Create a document, generate QR code, and set up routing flow.</p>
+<div class="container-fluid">
+
+    <h2 class="mb-4 text-white">New Document Routing</h2>
+
+    <div class="row g-4">
+
+        <!-- Document Information -->
+        <div class="col-md-6">
+            <div class="card p-4" style="background:#161e31;border:1px solid rgba(255,255,255,0.08);">
+
+                <form action="{{ route('documents.store') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Document Title *</label>
+                        <input type="text" name="title" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Description</label>
+                        <textarea name="description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Document Type</label>
+                        <input type="text" name="type" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Priority Level *</label>
+                        <div class="d-flex gap-2">
+                            @foreach(['Low','Medium','High'] as $p)
+                                <button type="button" class="btn btn-outline-secondary priority-btn">{{ $p }}</button>
+                                <input type="radio" name="priority" value="{{ $p }}" hidden {{ $p == 'Medium' ? 'checked' : '' }}>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Upload File *</label>
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+
+                    <h6 class="text-white mt-4">Routing Information</h6>
+                    <div class="mb-3">
+                        <label class="form-label text-white">Origin Office *</label>
+                        <select name="origin" class="form-control" required>
+                            <option value="" disabled selected>Select origin office</option>
+                            @foreach($offices as $office)
+                                <option value="{{ $office }}">{{ $office }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Destination Office *</label>
+                        <select name="destination" class="form-control" required>
+                            <option value="" disabled selected>Select destination office</option>
+                            @foreach($offices as $office)
+                                <option value="{{ $office }}">{{ $office }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary w-100 mt-3">Route Document</button>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- QR Scanner & Routing Flow -->
+        <div class="col-md-6 d-flex flex-column gap-4">
+
+            <div class="card p-4 text-center" style="background:#161e31;border:1px solid rgba(255,255,255,0.08);">
+                <h6 class="text-white">QR Scanner</h6>
+                <video id="qr-video" style="width:100%;height:250px;background:#0b1228;border-radius:10px;"></video>
+                <button id="start-camera" class="btn btn-info mt-3 w-100">Start Camera</button>
+            </div>
+
+            <div class="card p-4" style="background:#161e31;border:1px solid rgba(255,255,255,0.08);">
+                <h6 class="text-white">Routing Flow</h6>
+                <ol class="text-white ms-3 mt-2">
+                    <li>Document Created (Origin Office)</li>
+                    <li>In Transit</li>
+                    <li>Received (Destination)</li>
+                </ol>
+            </div>
+
+        </div>
+
     </div>
-    <div style="display:flex; gap:8px; align-items:center;">
-        <a href="{{ route('documents.index') }}" class="btn btn-primary">Back to Documents</a>
-    </div>
+
 </div>
+@endsection
 
-<form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data" class="card" style="padding:20px; border-radius:18px;">
-    @csrf
+@section('scripts')
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+document.querySelectorAll('.priority-btn').forEach((btn,i)=>{
+    btn.addEventListener('click',()=>{
+        document.querySelectorAll('input[name="priority"]')[i].checked = true;
+        document.querySelectorAll('.priority-btn').forEach(b=>b.classList.remove('btn-warning'));
+        btn.classList.add('btn-warning');
+    });
+});
 
-    <div class="grid2" style="gap:14px; margin-bottom:14px;">
-        <div class="form-group" style="width:100%;">
-            <label for="title">Title</label>
-            <input type="text" name="title" id="title" required style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--panel-border); background:rgba(15,23,42,0.65); color:var(--text);" />
-        </div>
-        <div class="form-group" style="width:100%;">
-            <label for="description">Description</label>
-            <textarea name="description" id="description" rows="4" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--panel-border); background:rgba(15,23,42,0.65); color:var(--text);"></textarea>
-        </div>
-    </div>
+let cameraStarted = false;
+document.getElementById('start-camera').addEventListener('click', ()=>{
+    if(cameraStarted) return;
+    cameraStarted = true;
 
-    <div class="grid2" style="gap:14px; margin-bottom:14px;">
-        <div class="form-group">
-            <label for="priority">Priority</label>
-            <select name="priority" id="priority" required style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--panel-border); background:rgba(15,23,42,0.65); color:var(--text);">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="origin_office_id">Origin Office</label>
-            <select name="origin_office_id" id="origin_office_id" required style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--panel-border); background:rgba(15,23,42,0.65); color:var(--text);">
-                @foreach($offices as $office)
-                <option value="{{ $office->id }}">{{ $office->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="destination_office_id">Destination Office</label>
-            <select name="destination_office_id" id="destination_office_id" required style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--panel-border); background:rgba(15,23,42,0.65); color:var(--text);">
-                @foreach($offices as $office)
-                <option value="{{ $office->id }}">{{ $office->name }}</option>
-                @endforeach
-            </select>
-        </div>
-    </div>
+    const html5QrCode = new Html5Qrcode("qr-video");
 
-    <div class="form-group" style="margin-bottom:16px;">
-        <label for="document_file">File Upload</label>
-        <div style="border:2px dashed rgba(148,163,184,0.4); border-radius:14px; padding:20px; display:flex; justify-content:center; align-items:center; color:rgba(226,232,240,0.8);">
-            Drag & Drop file here or click to upload
-            <input type="file" name="document_file" id="document_file" required style="position:absolute; left:0; top:0; width:100%; height:100%; opacity:0; cursor:pointer;" />
-        </div>
-    </div>
-
-    <button type="submit" class="btn btn-primary" style="margin-top:8px;">Generate QR & Route</button>
-</form>
-
-<div class="card" style="margin-top:18px; padding:18px; border-radius:16px;">
-    <h3 style="margin:0 0 10px 0;">QR Preview</h3>
-    <div id="qrPreview" style="width:120px; height:120px; background:linear-gradient(135deg, rgba(6,182,212,0.25), rgba(59,130,246,0.25)); display:flex; justify-content:center; align-items:center; border-radius:14px; color:#e0f2fe;">QRCODE</div>
-</div>
-
-<div class="card" style="margin-top:14px; padding:18px; border-radius:16px;">
-    <h3 style="margin:0 0 10px 0;">Routing Flow Preview</h3>
-    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between;">
-        <span style="padding:8px 12px; border-radius:999px; background:rgba(56,189,248,0.2);">HR</span>
-        <span>→</span>
-        <span style="padding:8px 12px; border-radius:999px; background:rgba(59,130,246,0.2);">Admin</span>
-        <span>→</span>
-        <span style="padding:8px 12px; border-radius:999px; background:rgba(16,185,129,0.2);">Finance</span>
-        <span>→</span>
-        <span style="padding:8px 12px; border-radius:999px; background:rgba(37,99,235,0.2);">Completed</span>
-    </div>
-</div>
+    Html5Qrcode.getCameras().then(cameras => {
+        if(cameras && cameras.length) {
+            html5QrCode.start(
+                cameras[0].id,
+                { fps: 10, qrbox: 250 },
+                qrCodeMessage => { alert("QR Code scanned: " + qrCodeMessage); },
+                errorMessage => {}
+            );
+        }
+    }).catch(err => console.error(err));
+});
+</script>
 @endsection

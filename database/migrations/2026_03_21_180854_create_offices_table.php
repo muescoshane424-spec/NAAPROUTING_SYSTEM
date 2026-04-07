@@ -13,11 +13,8 @@ return new class extends Migration
     {
         Schema::create('offices', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('department')->nullable();
-            $table->string('head')->nullable();
-            $table->string('contact')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->string('name'); // Added: This stores the office name (e.g., Registrar)
+            $table->string('department')->nullable(); // Optional: To group offices
             $table->timestamps();
         });
     }

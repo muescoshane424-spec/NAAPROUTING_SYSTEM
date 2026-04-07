@@ -2,67 +2,136 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityLog;
+use Illuminate\Http\Request;
 use App\Models\Document;
 use App\Models\Office;
-use Illuminate\Http\Request;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
+    /**
+     * Display a listing of documents (Main Documents Page).
+     */
     public function index(Request $request)
     {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
-        }
-        $documents = Document::with(['originOffice', 'currentOffice', 'destinationOffice'])->latest()->paginate(10);
-        return view('documents.index', compact('documents'));
+        // Eager load currentOffice to prevent N+1 query issues
+        $documents = Document::with(['currentOffice', 'originOffice', 'destinationOffice'])->latest()->get();
+        $offices = Office::orderBy('name', 'asc')->get();
+
+        return view('documents.index', compact('documents', 'offices'));
     }
 
-    public function create(Request $request)
-    {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
-        }
-        $offices = Office::orderBy('name')->get();
-        return view('documents.create', compact('offices'));
-    }
-
+    /**
+     * Store a newly created document in storage.
+     */
     public function store(Request $request)
     {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
-        }
-
-        $data = $request->validate([
+        $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string|max:100',
-            'priority' => 'required|in:low,medium,high',
+            'priority' => 'required|string',
             'origin_office_id' => 'required|exists:offices,id',
             'destination_office_id' => 'required|exists:offices,id',
-            'document_file' => 'required|file|max:10240',
+            'file' => 'required|file|max:5120' // 5MB Limit
         ]);
 
-        $documentFile = $request->file('document_file');
-        $path = $documentFile->store('documents', 'public');
+        try {
+            return DB::transaction(function () use ($request) {
+                // 1. Handle File Upload
+                $file = $request->file('file');
+                $path = $file->store('documents', 'public');
 
-        $doc = Document::create([
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'type' => $data['type'] ?? 'general',
-            'priority' => $data['priority'],
-            'origin_office_id' => $data['origin_office_id'],
-            'current_office_id' => $data['origin_office_id'],
-            'destination_office_id' => $data['destination_office_id'],
-            'uploaded_by' => session('user_email', 'anon'),
-            'file_path' => $path,
-            'status' => 'in_transit',
-            'qr_code' => base64_encode('NAAP-'.time().'-'.uniqid()),
-        ]);
+                // 2. Create Document record
+                $document = Document::create([
+                    'title' => $request->title,
+                    'description' => $request->description ?? 'No description provided',
+                    'type' => strtoupper($file->getClientOriginalExtension()),
+                    'priority' => $request->priority,
+                    'origin_office_id' => $request->origin_office_id,
+                    'current_office_id' => $request->origin_office_id,
+                    'destination_office_id' => $request->destination_office_id,
+                    'file_path' => $path,
+                    'status' => 'Pending',
+                    'uploaded_by' => session('user_id') ?? 1,
+                ]);
 
-        ActivityLog::create([ 'user' => session('user_email', 'anon'), 'action' => 'Document created', 'document_id' => $doc->id, 'ip' => $request->ip(), 'meta' => ['title' => $doc->title] ]);
+                // 3. Log Activity for the Activity Tab
+                ActivityLog::create([
+                    'user' => session('user_name') ?? 'Admin User',
+                    'action' => 'Document Created',
+                    'document_id' => $document->id,
+                    'ip' => $request->ip(),
+                    'meta' => json_encode(['filename' => $file->getClientOriginalName()])
+                ]);
 
-        return redirect()->route('documents.index')->with('success', 'Document uploaded and routed successfully.');
+                return redirect()->route('documents.index')->with('success', 'Document uploaded and initialized successfully!');
+            });
+        } catch (\Exception $e) {
+            return back()->with('error', 'Upload failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display specific document tracking details.
+     * Points to resources/views/documents/show.blade.php
+     */
+    public function show($id)
+    {
+        // Eager load activityLogs to show the routing history timeline
+        $document = Document::with(['originOffice', 'currentOffice', 'destinationOffice', 'activityLogs' => function($query) {
+            $query->latest();
+        }])->findOrFail($id);
+
+        return view('documents.show', compact('document'));
+    }
+
+    /**
+     * Handle the Document Tracking page logic (Route: track.index).
+     */
+    public function trackIndex(Request $request)
+    {
+        $query = Document::with(['originOffice', 'currentOffice', 'destinationOffice']);
+
+        // Search logic for Tracking ID or Title
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%$search%")
+                  ->orWhere('title', 'like', "%$search%");
+            });
+        }
+
+        $documents = $query->latest()->paginate(10);
+        
+        return view('track', compact('documents'));
+    }
+
+    /**
+     * Handle the Activity Logs page logic (Route: activity.index).
+     */
+    public function activityIndex()
+    {
+        // Fetch logs and the documents they belong to
+        $logs = ActivityLog::with('document')->latest()->paginate(15);
+        
+        return view('activity', compact('logs'));
+    }
+
+    /**
+     * Remove the specified document from storage.
+     */
+    public function destroy($id)
+    {
+        $document = Document::findOrFail($id);
+
+        // Delete the physical file from storage
+        if ($document->file_path) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
+
+        return redirect()->route('documents.index')->with('success', 'Document deleted successfully.');
     }
 }

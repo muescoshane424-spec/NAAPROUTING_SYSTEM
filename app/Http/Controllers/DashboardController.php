@@ -2,45 +2,44 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Document;
-use App\Models\Office;
 use Illuminate\Http\Request;
+use App\Models\{Document, User, Office, ActivityLog};
 
 class DashboardController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
+        // Security Gate: Ensure only ADMIN enters
+        if (session('user_role') !== 'ADMIN') {
+            return redirect()->route('home')->with('error', 'Unauthorized Access.');
         }
 
-        // Real Stats for KPI cards
+        // 1. KPI Stats
         $stats = [
-            'total' => Document::count(),
-            'in_transit' => Document::where('status', 'in_transit')->count(),
-            'completed' => Document::where('status', 'completed')->count(),
-            'pending' => Document::where('status', 'pending')->count(),
+            'total'       => Document::count(),
+            'in_transit'  => Document::where('status', 'In Transit')->count(),
+            'completed'   => Document::where('status', 'Completed')->count(),
+            'total_users' => User::count(),
         ];
 
-        // Weekly Trends for the Line Chart
-        $weeklyTrends = [];
+        // 2. 7-Day Activity Flow (Line Chart)
+        $flowData = [];
+        $days = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i);
-            $weeklyTrends[] = [
-                'label' => $date->format('D'),
-                'count' => Document::whereDate('created_at', $date->toDateString())->count()
-            ];
+            $days[] = $date->format('D');
+            $flowData[] = Document::whereDate('created_at', $date->toDateString())->count();
         }
 
-        // Office Performance for the Horizontal Bar Chart
-        $officePerformance = Office::select('offices.name')
-            ->join('documents', 'offices.id', '=', 'documents.current_office_id')
-            ->selectRaw('COUNT(documents.id) as doc_count')
-            ->groupBy('offices.id', 'offices.name')
-            ->orderBy('doc_count', 'desc')
-            ->limit(5)
+        // 3. Office Load (Bar Chart)
+        $offices = Office::withCount('documents')
+            ->orderBy('documents_count', 'desc')
+            ->take(5)
             ->get();
 
-        return view('dashboard', compact('stats', 'weeklyTrends', 'officePerformance'));
+        // 4. Recent Logs
+        $recentLogs = ActivityLog::latest()->take(10)->get();
+
+        return view('dashboard', compact('stats', 'flowData', 'days', 'offices', 'recentLogs'));
     }
 }

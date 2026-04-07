@@ -13,11 +13,6 @@ return new class extends Migration
     {
         Schema::create('document_routings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('document_id')->constrained('documents')->cascadeOnDelete();
-            $table->foreignId('from_office_id')->nullable()->constrained('offices')->nullOnDelete();
-            $table->foreignId('to_office_id')->nullable()->constrained('offices')->nullOnDelete();
-            $table->enum('status', ['transferred', 'received', 'completed'])->default('transferred');
-            $table->text('notes')->nullable();
             $table->timestamps();
         });
     }

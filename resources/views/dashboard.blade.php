@@ -1,125 +1,177 @@
 @extends('layouts.app')
 
-@section('head')
-<script src="{{ asset('js/chart.js') }}"></script>
-<style>
-    :root {
-        --bg-dark: #0b0e14;
-        --card-bg: #161b22;
-        --border: #30363d;
-        --text-gray: #8b949e;
-        --blue: #58a6ff;
-        --purple: #bc8cff;
-    }
-
-    .dashboard-container { background: var(--bg-dark); color: white; padding: 20px; min-height: 100vh; }
-    
-    /* Grid for the 4 Top Cards */
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-    .kpi-card { background: var(--card-bg); border: 1px solid var(--border); padding: 25px; border-radius: 12px; position: relative; }
-    .kpi-label { color: var(--text-gray); font-size: 13px; font-weight: 600; }
-    .kpi-value { font-size: 32px; font-weight: 800; margin-top: 10px; }
-    .trend-tag { position: absolute; top: 25px; right: 25px; font-size: 11px; padding: 4px 8px; border-radius: 20px; background: rgba(63, 185, 80, 0.1); color: #3fb950; }
-
-    /* Grid for Charts */
-    .chart-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
-    .chart-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 25px; }
-    
-    /* FIX: Force height so charts don't disappear */
-    .canvas-wrapper { position: relative; height: 300px; width: 100%; margin-top: 20px; }
-</style>
-@endsection
+@section('title', 'System Analytics - Admin')
 
 @section('content')
+<style>
+    :root {
+        --bg-dark: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.45);
+        --border: rgba(255, 255, 255, 0.08);
+        --text-dim: #94a3b8;
+        --accent-blue: #22c1ff;
+        --accent-purple: #a855f7;
+        --accent-green: #22c55e;
+        --accent-orange: #f59e0b;
+    }
+    .dashboard-container { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .kpi-card { 
+        background: var(--card-bg); 
+        border: 1px solid var(--border); 
+        border-radius: 1rem; 
+        padding: 1.5rem; 
+        backdrop-filter: blur(10px);
+        transition: transform 0.2s;
+    }
+    .kpi-card:hover { transform: translateY(-5px); }
+    .kpi-card h3 { font-size: 2rem; font-weight: 800; margin: 0.5rem 0; }
+    .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+    .charts-main-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem; }
+    .chart-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.5rem; }
+    .canvas-container { position: relative; height: 260px; width: 100%; }
+    .satisfaction-wrapper { position: relative; height: 250px; display: flex; align-items: center; justify-content: center; }
+</style>
+
 <div class="dashboard-container">
-    <div style="margin-bottom: 25px;">
-        <h1 style="margin:0;">Dashboard</h1>
-        <p style="color: var(--text-gray);">Real-time Insights • {{ now()->format('D, M d, Y') }}</p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-0 text-white">System Analytics</h1>
+            <p class="text-muted small">Real-time Admin tracking for {{ now()->format('F d, Y') }}</p>
+        </div>
+        
+        @php 
+            $highPriorityCount = \App\Models\Document::where('priority', 'High')->where('status', '!=', 'Completed')->count(); 
+        @endphp
+        
+        @if($highPriorityCount > 0)
+            <div class="badge bg-danger p-2 shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ $highPriorityCount }} High Priority Tasks
+            </div>
+        @endif
     </div>
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <span class="kpi-label">Total Documents</span>
-            <div class="kpi-value">{{ number_format($stats['total']) }}</div>
-            <span class="trend-tag">+12%</span>
+            <div class="label">Total System Docs</div>
+            <h3 style="color: var(--accent-blue)">{{ number_format($stats['total'] ?? 0) }}</h3>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">In Transit</span>
-            <div class="kpi-value">{{ $stats['in_transit'] }}</div>
-            <span class="trend-tag">+8%</span>
+            <div class="label">Actively Routing</div>
+            <h3 style="color: var(--accent-purple)">{{ $stats['in_transit'] ?? 0 }}</h3>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Completed</span>
-            <div class="kpi-value">{{ $stats['completed'] }}</div>
-            <span class="trend-tag">+15%</span>
+            <div class="label">Archive Completed</div>
+            <h3 style="color: var(--accent-green)">{{ $stats['completed'] ?? 0 }}</h3>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Pending Approvals</span>
-            <div class="kpi-value" style="color: #f85149;">{{ $stats['pending'] }}</div>
-            <span class="trend-tag" style="color: #f85149; background: rgba(248,81,73,0.1);">-5%</span>
+            <div class="label">Total System Users</div>
+            <h3 style="color: var(--accent-orange)">{{ $stats['total_users'] ?? 0 }}</h3>
         </div>
     </div>
 
-    <div class="chart-grid">
+    <div class="charts-main-grid">
         <div class="chart-card">
-            <h3 style="margin:0;">Document Flow</h3>
-            <div class="canvas-wrapper"><canvas id="flowChart"></canvas></div>
+            <h5 class="fw-bold mb-4 text-white">7-Day Activity Flow</h5>
+            <div class="canvas-container">
+                <canvas id="flowChart"></canvas>
+            </div>
         </div>
+
         <div class="chart-card">
-            <h3 style="margin:0;">Office Activity</h3>
-            <div class="canvas-wrapper"><canvas id="officeChart"></canvas></div>
+            <h5 class="fw-bold mb-4 text-white">System Health Score</h5>
+            <div class="satisfaction-wrapper">
+                <canvas id="uxChart"></canvas>
+                <div style="position: absolute; text-align: center;">
+                    <h2 class="mb-0 fw-bold" style="color: var(--accent-green)">92%</h2>
+                    <small class="text-muted">OPERATIONAL</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h5 class="fw-bold mb-4 text-white">Top Office Load (Current)</h5>
+            <div class="canvas-container">
+                <canvas id="officeChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h5 class="fw-bold mb-4 text-white">Recent System Activity</h5>
+            <div class="activity-feed" style="max-height: 260px; overflow-y: auto;">
+                @forelse($recentLogs ?? [] as $log)
+                    <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
+                        <div class="text-info small fw-bold" style="min-width: 80px;">{{ $log->created_at->diffForHumans() }}</div>
+                        <div class="text-white small">
+                            <strong>{{ $log->user_name ?? 'System' }}</strong> {{ $log->action }}
+                            <br><small class="text-muted">Document: {{ $log->document->title ?? 'N/A' }}</small>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted small text-center mt-5">No activity logs found.</p>
+                @endforelse
+            </div>
         </div>
     </div>
 </div>
-@endsection
 
-@section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+
+    const baseOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false }, beginAtZero: true },
+            x: { grid: { display: false }, border: { display: false } }
+        }
+    };
+
     // Flow Chart
     new Chart(document.getElementById('flowChart'), {
         type: 'line',
         data: {
-            labels: {!! json_encode(array_column($weeklyTrends, 'label')) !!},
+            labels: @json($days ?? []),
             datasets: [{
-                data: {!! json_encode(array_column($weeklyTrends, 'count')) !!},
-                borderColor: '#58a6ff',
-                backgroundColor: 'rgba(88, 166, 255, 0.1)',
+                data: @json($flowData ?? []),
+                borderColor: '#22c1ff',
+                backgroundColor: 'rgba(34, 193, 255, 0.1)',
                 fill: true,
                 tension: 0.4
             }]
         },
-        options: {
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                y: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
-                x: { grid: { display: false }, ticks: { color: '#8b949e' } }
-            }
-        }
+        options: baseOptions
     });
 
-    // Office Activity
+    // UX Donut
+    new Chart(document.getElementById('uxChart'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [92, 8],
+                backgroundColor: ['#22c55e', 'rgba(255,255,255,0.05)'],
+                borderWidth: 0,
+                cutout: '85%'
+            }]
+        },
+        options: { ...baseOptions, scales: { x: { display: false }, y: { display: false } } }
+    });
+
+    // Workload Chart
     new Chart(document.getElementById('officeChart'), {
         type: 'bar',
         data: {
-            labels: {!! json_encode($officePerformance->pluck('name')) !!},
+            labels: @json($offices->pluck('name') ?? []),
             datasets: [{
-                data: {!! json_encode($officePerformance->pluck('doc_count')) !!},
-                backgroundColor: '#bc8cff',
-                borderRadius: 4
+                data: @json($offices->pluck('documents_count') ?? []),
+                backgroundColor: '#a855f7',
+                borderRadius: 6
             }]
         },
-        options: {
-            indexAxis: 'y', // Matches horizontal bars
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: '#30363d' }, ticks: { color: '#8b949e' } },
-                y: { grid: { display: false }, ticks: { color: '#8b949e' } }
-            }
-        }
+        options: baseOptions
     });
-});
 </script>
 @endsection

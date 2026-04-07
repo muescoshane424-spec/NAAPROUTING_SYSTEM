@@ -3,53 +3,78 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 use App\Models\Document;
 use App\Models\Office;
-use App\Models\DocumentRouting;
 use App\Models\ActivityLog;
+use Illuminate\Support\Facades\DB;
 
 class RoutingController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Display the active routing dashboard with pagination.
+     */
+    public function index()
     {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
-        }
+        // 1. Fetch real offices for the dropdown
+        $offices = Office::orderBy('name', 'asc')->get();
 
-        $documents = Document::with(['originOffice', 'currentOffice', 'destinationOffice'])->latest()->paginate(10);
-        $offices = Cache::remember('offices', 3600, function () {
-            return Office::all();
-        });
+        // 2. Fetch documents with relationships to avoid N+1 query issues
+        $documents = Document::with(['originOffice', 'currentOffice', 'destinationOffice'])
+            ->latest()
+            ->paginate(10);
+
         return view('routing', compact('documents', 'offices'));
     }
 
-    public function routeDocument(Request $request, Document $document)
+    /**
+     * Update document location and log the movement.
+     */
+    public function routeDocument(Request $request, $id)
     {
-        if (!$request->session()->get('authenticated', false)) {
-            return redirect()->route('home');
-        }
-
-        $this->validate($request, [
-            'next_office_id' => 'required|exists:offices,id',
-            'notes' => 'nullable|string',
+        $request->validate([
+            'office_id' => 'required|exists:offices,id'
         ]);
 
-        DB::transaction(function () use ($request, $document) {
-            $document->update(['current_office_id' => $request->next_office_id, 'status' => 'in_transit']);
+        try {
+            DB::transaction(function () use ($request, $id) {
+                // Find document or fail with 404
+                $document = Document::findOrFail($id);
+                $oldOfficeName = $document->currentOffice->name ?? 'Unknown Office';
+                
+                // Find the target office name for the log
+                $targetOffice = Office::findOrFail($request->office_id);
 
-            DocumentRouting::create([
-                'document_id' => $document->id,
-                'from_office_id' => $document->current_office_id,
-                'to_office_id' => $request->next_office_id,
-                'status' => 'transferred',
-                'notes' => $request->notes,
-            ]);
+                // Determine status: If target is the destination, set to 'Received/Completed'
+                $newStatus = ($request->office_id == $document->destination_office_id) 
+                    ? 'Completed' 
+                    : 'In Transit';
 
-            ActivityLog::create(['user' => session('user_email', 'anon'), 'action' => 'Routed document', 'document_id' => $document->id, 'ip' => $request->ip(), 'meta' => ['to_office' => $request->next_office_id]]);
-        });
+                // 1. Update the Document record
+                $document->update([
+                    'current_office_id' => $request->office_id,
+                    'status' => $newStatus
+                ]);
 
-        return back()->with('success', 'Document was routed successfully.');
+                // 2. Log the activity
+                // Note: Ensure your ActivityLog model has 'meta' in $casts as 'array'
+                ActivityLog::create([
+                    'user' => session('user_name') ?? 'System Admin',
+                    'action' => 'Document Routed',
+                    'document_id' => $document->id,
+                    'ip' => $request->ip(),
+                    'meta' => [
+                        'from_office' => $oldOfficeName,
+                        'to_office' => $targetOffice->name,
+                        'status' => $newStatus
+                    ]
+                ]);
+            });
+
+            return back()->with('success', 'Document location updated successfully!');
+        } catch (\Exception $e) {
+            // Log the error for the developer and show a user-friendly message
+            \Log::error("Routing Error: " . $e->getMessage());
+            return back()->with('error', 'Routing failed: Something went wrong while updating the location.');
+        }
     }
 }

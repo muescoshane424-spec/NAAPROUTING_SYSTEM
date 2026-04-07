@@ -3,239 +3,274 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>@yield('title', 'NAAP Admin')</title>
+    <title>NAAP Admin - @yield('title')</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    @yield('head')
+
     <style>
         :root {
-            --bg: #0f172a;
-            --side: rgba(15, 23, 42, 0.98);
-            --panel: rgba(30, 41, 59, 0.7);
-            --panel-border: rgba(148, 163, 184, 0.15);
-            --text: #e2e8f0;
-            --accent-a: #06b6d4;
-            --accent-b: #3b82f6;
-            --success: #22c55e;
-            --danger: #ef4444;
+            --bg: #0b1228;
+            --sidebar-bg: #161e31;
+            --sidebar-width: 280px;
+            --accent-cyan: #22d3ee;
+            --accent-purple: #a855f7;
+            --text-dim: #94a3b8;
+            --panel: rgba(30, 41, 59, 0.45);
+            --panel-border: rgba(255, 255, 255, 0.08);
         }
 
-        /* Base Reset */
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
-            margin: 0; 
-            min-height: 100vh; 
-            font-family: 'Inter', sans-serif; 
-            color: var(--text); 
-            background: #0b1228; 
-            overflow-x: hidden; 
-        }
-
-        /* App Layout Shell */
-        .app-shell { 
-            display: grid; 
-            grid-template-columns: 280px 1fr; 
-            min-height: 100vh; 
-            transition: all 0.3s ease;
-        }
-
-        /* Sidebar Styles */
-        .sidebar { 
-            background: var(--side); 
-            border-right: 1px solid rgba(56, 189, 248, 0.1); 
-            padding: 24px 18px; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .sidebar .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-        .sidebar .logo { 
-            width: 40px; height: 40px; border-radius: 12px; 
-            background: linear-gradient(135deg, var(--accent-a), var(--accent-b)); 
-            display: grid; place-items: center; font-weight: 800; color: #fff; 
-        }
-
-        .sidebar nav { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-        .sidebar a { 
-            display: flex; align-items: center; gap: 12px; color: var(--text); 
-            text-decoration: none; padding: 12px 16px; border-radius: 12px; 
-            transition: 0.2s; background: rgba(255,255,255,0.02);
-        }
-        .sidebar a:hover, .sidebar a.active { 
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2)); 
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            color: #fff;
-        }
-
-        /* Main Content Area */
-        .main { 
-            padding: 24px; 
-            width: 100%; 
-            max-width: 100vw;
+            background-color: var(--bg); 
+            color: #f8fafc; 
+            font-family: 'Inter', sans-serif;
+            margin: 0;
             overflow-x: hidden;
         }
 
-        .top-bar { 
-            display: flex; justify-content: space-between; align-items: center; 
-            margin-bottom: 24px; background: var(--panel); 
-            padding: 12px 20px; border-radius: 16px; border: 1px solid var(--panel-border);
+        /* SIDEBAR STYLING */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: var(--sidebar-bg); 
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px 20px;
+            position: fixed; 
+            height: 100vh; 
+            z-index: 3000; 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .card { 
-            background: var(--panel); border: 1px solid var(--panel-border); 
-            border-radius: 20px; padding: 20px; margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        #sidebarOverlay {
+            position: fixed; inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            z-index: 2500; display: none;
         }
 
-        /* Table Responsiveness Fix */
-        .table-container { width: 100%; overflow-x: auto; border-radius: 12px; }
-        table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        th, td { padding: 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .brand-section {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 35px; padding-left: 10px;
+        }
 
-        /* --- MOBILE OPTIMIZATIONS (The Fix) --- */
+        .logo-box {
+            width: 40px; height: 40px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 10px;
+            display: grid; place-items: center;
+            font-weight: 800; color: white;
+            box-shadow: 0 4px 12px rgba(34, 211, 238, 0.3);
+        }
+
+        nav { flex: 1; overflow-y: auto; }
+
+        .nav-link { 
+            color: var(--text-dim); 
+            text-decoration: none; 
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-radius: 12px; margin-bottom: 4px;
+            transition: 0.2s; font-size: 0.95rem;
+        }
+
+        .nav-link:hover, .nav-link.active { 
+            background: rgba(34, 211, 238, 0.1); 
+            color: var(--accent-cyan); 
+            font-weight: 600;
+        }
+
+        /* HEADER & NOTIFICATIONS */
+        header {
+            background: rgba(11, 18, 40, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 2000;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .notif-btn {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            color: var(--accent-cyan);
+            width: 42px; height: 42px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .notif-badge {
+            position: absolute; top: -5px; right: -5px;
+            background: #fb7185; color: white;
+            font-size: 0.65rem; font-weight: 800;
+            padding: 2px 6px; border-radius: 20px;
+            border: 2px solid var(--bg);
+        }
+
+        .main-container { flex: 1; margin-left: var(--sidebar-width); min-height: 100vh; transition: 0.3s; }
+
+        /* USER CARD */
+        .user-profile-card {
+            background: var(--panel); border-radius: 16px;
+            padding: 12px; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 10px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .avatar {
+            width: 35px; height: 35px;
+            background: linear-gradient(to bottom right, var(--accent-purple), #6366f1);
+            border-radius: 8px; display: grid; place-items: center;
+            font-weight: bold; font-size: 0.8rem; color: white;
+        }
+
         @media (max-width: 992px) {
-            .app-shell { grid-template-columns: 1fr; }
-
-            /* Hide Sidebar by default on Mobile */
-            .sidebar { 
-                position: fixed; left: -300px; width: 280px; 
-                transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-                box-shadow: 15px 0 50px rgba(0,0,0,0.8);
-            }
-            .sidebar.open { left: 0; }
-
-            .main { padding: 15px; padding-bottom: 100px; }
-
-            /* Show Bottom Navigation */
-            .bottom-nav { 
-                display: flex !important; 
-                position: fixed; bottom: 0; left: 0; right: 0; 
-                background: rgba(15, 23, 42, 0.95); 
-                backdrop-filter: blur(10px);
-                border-top: 1px solid rgba(255,255,255,0.1);
-                padding: 12px; justify-content: space-around; z-index: 1000;
-            }
-        }
-
-        /* Bottom Nav Hidden on Desktop */
-        .bottom-nav { display: none; }
-        .bottom-nav a { 
-            text-decoration: none; color: #94a3b8; 
-            font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-        }
-        .bottom-nav a.active { color: var(--accent-a); font-weight: 700; }
-        .bottom-nav .icon { font-size: 22px; }
-
-        /* Backdrop for Mobile Sidebar */
-        .backdrop { 
-            display: none; position: fixed; inset: 0; 
-            background: rgba(0,0,0,0.7); z-index: 90; 
-        }
-        .backdrop.active { display: block; }
-
-        /* KPI Grid Fix */
-        .grid-responsive { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-            gap: 16px; 
-        }
-
-        button.menu-toggle {
-            background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-            border: none; color: white; padding: 10px 16px; border-radius: 10px;
-            font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            .sidebar { transform: translateX(-100%); }
+            .main-container { margin-left: 0; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            body.sidebar-open #sidebarOverlay { display: block; }
         }
     </style>
 </head>
+
 <body>
+    <div id="sidebarOverlay"></div>
 
-    <div class="backdrop" id="backdrop"></div>
-
-    <div class="app-shell">
-        <aside class="sidebar" id="sidebar">
-            <div class="brand">
-                <div class="logo">NA</div>
-                <h1 style="margin:0; font-size: 1.4rem;">NAAP Admin</h1>
-            </div>
-            <nav>
-                <a href="{{ route('dashboard') }}" class="{{ request()->is('dashboard') ? 'active' : '' }}"><span>🏠</span> Dashboard</a>
-                <a href="{{ route('documents.index') }}" class="{{ request()->is('documents*') ? 'active' : '' }}"><span>📁</span> Documents</a>
-                <a href="{{ route('qr.scan') }}" class="{{ request()->is('qr-scan*') ? 'active' : '' }}"><span>📷</span> QR Scanner</a>
-                <a href="{{ route('offices.index') }}"><span>🏢</span> Offices</a>
-                <a href="{{ route('reports.index') }}"><span>📊</span> Reports</a>
-                <hr style="width:100%; opacity: 0.1; margin: 10px 0;">
-                <a href="{{ route('logout') }}" style="color: var(--danger);"><span>🚪</span> Logout</a>
-            </nav>
-        </aside>
-
-        <main class="main">
-            <header class="top-bar">
-                <button class="menu-toggle" id="menuBtn">
-                    <span>☰</span> Menu
-                </button>
-                <div style="text-align: right;">
-                    <div style="font-weight: 700; font-size: 0.9rem;">{{ session('user_email', 'User') }}</div>
-                    <div style="font-size: 0.75rem; color: var(--accent-a);">System Online</div>
+    <aside class="sidebar" id="sidebar">
+        <div class="brand-section">
+            <div class="logo-group d-flex align-items-center gap-2">
+                <div class="logo-box">NA</div>
+                <div>
+                    <h5 class="m-0 fw-bold">NAAP</h5>
+                    <small class="text-info" style="font-size: 0.6rem; letter-spacing: 1px; font-weight: 700;">DOC ROUTING</small>
                 </div>
-            </header>
+            </div>
+            <button class="btn d-lg-none text-white p-0" id="closeSidebar">
+                <i class="bi bi-x-lg fs-4"></i>
+            </button>
+        </div>
 
+        <nav>
+            <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                <i class="bi bi-grid-fill"></i> Dashboard
+            </a>
+            <a href="{{ route('documents.index') }}" class="nav-link {{ request()->routeIs('documents.*') ? 'active' : '' }}">
+                <i class="bi bi-file-earmark-text-fill"></i> Documents
+            </a>
+            <a href="{{ route('qr.index') }}" class="nav-link {{ request()->routeIs('qr.*') ? 'active' : '' }}">
+                <i class="bi bi-qr-code-scan"></i> QR Scanner
+            </a>
+            <a href="{{ route('track.index') }}" class="nav-link {{ request()->routeIs('track.*') ? 'active' : '' }}">
+                <i class="bi bi-geo-alt-fill"></i> Tracking
+            </a>
+            <a href="{{ route('offices.index') }}" class="nav-link {{ request()->routeIs('offices.*') ? 'active' : '' }}">
+                <i class="bi bi-building-fill"></i> Offices
+            </a>
+            <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                <i class="bi bi-people-fill"></i> User Management
+            </a>
+            <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <i class="bi bi-graph-up-arrow"></i> Reports
+            </a>
+            <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
+                <i class="bi bi-clock-history"></i> Activity
+            </a>
+            <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                <i class="bi bi-gear-fill"></i> Settings
+            </a>
+            <a href="{{ route('profile') }}" class="nav-link {{ request()->routeIs('profile') ? 'active' : '' }}">
+                <i class="bi bi-person-circle"></i> My Profile
+            </a>
+        </nav>
+
+        <div class="mt-auto pt-3">
+            <div class="user-profile-card">
+                <div class="avatar">{{ substr(session('user_email', 'A'), 0, 1) }}</div>
+                <div style="overflow: hidden;">
+                    <div class="small fw-bold text-truncate text-white">{{ session('user_name', 'Admin') }}</div>
+                    <small class="text-muted text-truncate d-block" style="font-size: 0.7rem;">{{ session('user_email', 'admin@naap.edu') }}</small>
+                </div>
+            </div>
+            <a href="{{ route('logout') }}" class="logout-link text-decoration-none" style="color: #fb7185; font-size: 0.85rem; font-weight: 600; padding: 8px 16px; display: block;">
+                <i class="bi bi-box-arrow-left me-2"></i> Logout System
+            </a>
+        </div>
+    </aside>
+
+    <div class="main-container">
+        <header class="container-fluid px-4 py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn d-lg-none" id="hamburgerMenu" style="background: var(--panel); border: 1px solid var(--panel-border); color: var(--accent-cyan);">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
+                <h4 class="mb-0 fw-bold">@yield('title')</h4>
+            </div>
+
+            <div class="dropdown">
+                <div class="notif-btn position-relative" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-bell"></i>
+                    <span class="notif-badge">3</span>
+                </div>
+                <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary shadow mt-2" aria-labelledby="notifDropdown" style="width: 280px;">
+                    <li class="dropdown-header text-info fw-bold">Notifications</li>
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                    <li><a class="dropdown-item text-white small" href="#">New document assigned</a></li>
+                    <li><a class="dropdown-item text-white small" href="#">System update complete</a></li>
+                    <li><a class="dropdown-item text-white small" href="#">User login detected</a></li>
+                </ul>
+            </div>
+        </header>
+
+        <main class="container-fluid px-4 py-4">
             @if(session('success'))
-                <div class="card" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); color: #a7f3d0; padding: 15px;">
-                    ✅ {{ session('success') }}
+                <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="background: rgba(34, 211, 238, 0.1); color: var(--accent-cyan); border-left: 4px solid var(--accent-cyan);">
+                    <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
 
-            <div class="content-body">
-                @yield('content')
-            </div>
-        </main>
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="background: rgba(251, 113, 133, 0.1); color: #fb7185; border-left: 4px solid #fb7185;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
 
-        <nav class="bottom-nav">
-            <a href="{{ route('dashboard') }}" class="{{ request()->is('dashboard') ? 'active' : '' }}">
-                <span class="icon">🏠</span> Dashboard
-            </a>
-            <a href="{{ route('documents.index') }}" class="{{ request()->is('documents*') ? 'active' : '' }}">
-                <span class="icon">📄</span> Docs
-            </a>
-            <a href="{{ route('qr.scan') }}" class="{{ request()->is('qr-scan*') ? 'active' : '' }}">
-                <span class="icon">📷</span> Scan
-            </a>
-            <a href="{{ route('reports.index') }}">
-                <span class="icon">📊</span> Reports
-            </a>
-        </nav>
+            @yield('content')
+        </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    @yield('scripts')
+    
     <script>
-        const sidebar = document.getElementById('sidebar');
-        const menuBtn = document.getElementById('menuBtn');
-        const backdrop = document.getElementById('backdrop');
+        const body = document.body;
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const closeSidebar = document.getElementById('closeSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
 
-        // Toggle Sidebar on Mobile
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.add('open');
-            backdrop.classList.add('active');
+        // Sidebar Toggle Logic
+        hamburgerMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            body.classList.add('sidebar-open');
         });
 
-        // Close Sidebar when clicking backdrop
-        backdrop.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            backdrop.classList.remove('active');
-        });
+        closeSidebar.addEventListener('click', () => body.classList.remove('sidebar-open'));
+        overlay.addEventListener('click', () => body.classList.remove('sidebar-open'));
 
-        // Auto-close sidebar on link click (mobile)
-        document.querySelectorAll('.sidebar a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 992) {
-                    sidebar.classList.remove('open');
-                    backdrop.classList.remove('active');
-                }
+        // Auto-dismiss Alerts after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
             });
-        });
+        }, 5000);
     </script>
 </body>
 </html>

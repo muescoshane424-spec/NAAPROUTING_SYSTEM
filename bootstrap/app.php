@@ -10,9 +10,15 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
+    ->withMiddleware(function (Middleware $middleware) {
+        // 1. Your Ngrok bypass
+        $middleware->append(\App\Http\Middleware\SkipNgrokWarning::class);
+
+        // 2. Disable CSRF for API routes so Android can POST data
+        $middleware->validateCsrfTokens(except: [
+            'api/*', 
+        ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

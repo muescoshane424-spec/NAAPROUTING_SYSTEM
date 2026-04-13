@@ -30,6 +30,10 @@ Route::get('/login', function() {
 
 Route::post('/login', [UserController::class, 'login'])->name('login.submit');
 
+// 2FA Routes
+Route::get('/2fa/verify', [UserController::class, 'show2FAVerify'])->name('2fa.verify');
+Route::post('/2fa/verify', [UserController::class, 'verify2FA'])->name('2fa.verify.submit');
+
 // --- Authenticated Admin Routes ---
 Route::middleware([\App\Http\Middleware\EnsureAuthenticated::class])->group(function () {
 

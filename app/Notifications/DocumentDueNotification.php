@@ -17,7 +17,7 @@ class DocumentDueNotification extends Notification
     /**
      * Create a new notification instance.
      */
-    public function __construct(Document $document)
+    public function __construct($document)
     {
         $this->document = $document;
     }

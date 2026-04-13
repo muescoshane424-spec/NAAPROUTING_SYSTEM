@@ -136,33 +136,38 @@
             <div class="small fw-bold text-white">{{ optional($doc->receiverUser)->name ?? 'Unassigned' }}</div>
             <div class="small text-muted">{{ optional(optional($doc->receiverUser)->department)->name ?? 'No department' }}</div>
             <div class="small text-muted mt-2">Last Update</div>
-            <div class="small fw-bold text-white">{{ $doc->updated_at->diffForHumans() }}</div>
+            <div class="small fw-bold text-white">{{ optional($doc->updated_at)->diffForHumans() ?? 'Unknown' }}</div>
         </div>
     </div>
 
     @php
-        // Logic to determine tracker width
-        $isFinished = ($doc->current_office_id == $doc->destination_office_id);
-        $progressWidth = $isFinished ? '100%' : '50%';
+        // Logic to determine tracker width and step status
+        $currentOfficeId = $doc->current_office_id;
+        $originOfficeId = $doc->origin_office_id;
+        $destinationOfficeId = $doc->destination_office_id;
+        $isAtOrigin = $currentOfficeId === $originOfficeId;
+        $isAtDestination = $currentOfficeId === $destinationOfficeId;
+        $isInTransit = !$isAtOrigin && !$isAtDestination;
+        $progressWidth = $isAtDestination ? '100%' : ($isAtOrigin ? '20%' : '60%');
     @endphp
 
     <div class="tracker-container">
         <div class="tracker-line-bg"></div>
         <div class="tracker-line-fill" style="width: {{ $progressWidth }};"></div> 
         
-        <div class="step-node completed">
-            <div class="step-dot">✓</div>
-            <div class="step-label text-truncate" style="max-width: 100px;">{{ $doc->originOffice->name ?? 'Origin' }}</div>
+        <div class="step-node {{ $isAtOrigin ? 'active' : 'completed' }}">
+            <div class="step-dot">{{ $isAtOrigin ? '●' : '✓' }}</div>
+            <div class="step-label text-truncate" style="max-width: 100px;">{{ optional($doc->originOffice)->name ?? 'Origin' }}</div>
         </div>
 
-        <div class="step-node {{ $isFinished ? 'completed' : 'active' }}">
-            <div class="step-dot">{{ $isFinished ? '✓' : '2' }}</div>
-            <div class="step-label text-truncate" style="max-width: 100px;">{{ $doc->currentOffice->name ?? 'Current' }}</div>
+        <div class="step-node {{ $isInTransit ? 'active' : ($isAtDestination ? 'completed' : '') }}">
+            <div class="step-dot">{{ $isInTransit ? '●' : ($isAtDestination ? '✓' : '2') }}</div>
+            <div class="step-label text-truncate" style="max-width: 100px;">{{ optional($doc->currentOffice)->name ?? 'Current' }}</div>
         </div>
 
-        <div class="step-node {{ $isFinished ? 'completed' : '' }}">
-            <div class="step-dot">3</div>
-            <div class="step-label text-truncate" style="max-width: 100px;">{{ $doc->destinationOffice->name ?? 'Destination' }}</div>
+        <div class="step-node {{ $isAtDestination ? 'active completed' : '' }}">
+            <div class="step-dot">{{ $isAtDestination ? '✓' : '3' }}</div>
+            <div class="step-label text-truncate" style="max-width: 100px;">{{ optional($doc->destinationOffice)->name ?? 'Destination' }}</div>
         </div>
     </div>
     <div class="row text-white mt-3">
@@ -183,34 +188,85 @@
 
     <hr style="border-color: rgba(255,255,255,0.05); margin: 25px 0;">
 
-    <form action="{{ route('routing.route', $doc->id) }}" method="POST" class="row g-3 align-items-center">
-        @csrf
-        <div class="col-md-8">
-            <label class="small text-muted mb-2 d-block">Move to next department:</label>
-            <select name="office_id" class="form-select form-glass w-100" required>
-                <option value="" selected disabled>Select Target Office...</option>
-                @foreach($offices as $office)
-                    <option value="{{ $office->id }}" {{ $doc->current_office_id == $office->id ? 'disabled' : '' }}>
-                        {{ $office->name }}
-                    </option>
-                @endforeach
-            </select>
-        </div>
+    <div class="row text-white mb-4">
         <div class="col-md-12">
-            <label class="small text-muted mb-2 d-block">Assign or reassign receiver:</label>
-            <select name="receiver_user_id" class="form-select form-glass w-100">
-                <option value="" disabled {{ optional($doc->receiverUser)->id ? '' : 'selected' }}>Keep current receiver</option>
-                @foreach($users as $user)
-                    <option value="{{ $user->id }}" {{ optional($doc->receiverUser)->id == $user->id ? 'selected' : '' }}>
-                        {{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif
-                    </option>
-                @endforeach
-            </select>
+            <h6 class="text-info mb-3">Current Document Location</h6>
         </div>
-        <div class="col-md-4 mt-md-4">
-            <button type="submit" class="btn-route w-100 mt-2">Update Location & Receiver</button>
+    </div>
+
+    <div class="row text-white g-3">
+        <div class="col-md-3">
+            <div class="card p-3" style="background: rgba(34, 211, 238, 0.05); border: 1px solid rgba(34, 211, 238, 0.2); border-radius: 10px;">
+                <small class="text-muted">📍 Current Location</small>
+                <div class="fw-bold mt-2">{{ $doc->currentOffice->name ?? 'In Transit' }}</div>
+            </div>
         </div>
-    </form>
+        <div class="col-md-3">
+            <div class="card p-3" style="background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 10px;">
+                <small class="text-muted">🔄 Status</small>
+                <div class="fw-bold mt-2">{{ $doc->status }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 10px;">
+                <small class="text-muted">⏱️ Due Date</small>
+                <div class="fw-bold mt-2">
+                    @if($doc->due_date)
+                        {{ $doc->due_date->format('M d, Y') }}
+                    @else
+                        N/A
+                    @endif
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3" style="background: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 10px;">
+                <small class="text-muted">👤 Current Holder</small>
+                <div class="fw-bold mt-2 small">{{ optional($doc->receiverUser)->name ?? 'Unassigned' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row text-white mt-4 g-3">
+        <div class="col-md-6">
+            <div class="card p-4" style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;">
+                <h6 class="text-info mb-3">Journey So Far</h6>
+                <div class="small">
+                    <div class="mb-2">
+                        <span class="badge bg-success me-2">✓</span>
+                        <span>Started at: {{ $doc->originOffice->name ?? 'Origin' }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="badge bg-primary me-2">●</span>
+                        <span>Currently at: {{ $doc->currentOffice->name ?? 'In Transit' }}</span>
+                    </div>
+                    <div>
+                        <span class="badge bg-warning me-2">→</span>
+                        <span>Heading to: {{ $doc->destinationOffice->name ?? 'Final Destination' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4" style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;">
+                <h6 class="text-info mb-3">Document Details</h6>
+                <div class="small text-white">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">QR Code:</span>
+                        <span class="fw-bold">{{ $doc->qr_id ?? 'N/A' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">File Type:</span>
+                        <span class="fw-bold">{{ $doc->type ?? 'Unknown' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Last Update:</span>
+                        <span class="fw-bold">{{ $doc->updated_at->diffForHumans() }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endforeach
 

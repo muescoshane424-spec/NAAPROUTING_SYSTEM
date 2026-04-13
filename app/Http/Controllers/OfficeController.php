@@ -152,7 +152,9 @@ class OfficeController extends Controller
     {
         $office = Office::findOrFail($officeId);
         
-        $users = User::where('office_id', $officeId)
+        $users = User::whereHas('department', function($query) use ($office) {
+            $query->where('name', $office->department);
+        })
             ->with('department')
             ->orderBy('name', 'asc')
             ->get()

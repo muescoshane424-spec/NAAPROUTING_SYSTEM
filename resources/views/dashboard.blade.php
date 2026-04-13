@@ -25,10 +25,11 @@
         padding: 1.5rem; 
         backdrop-filter: blur(10px);
         transition: transform 0.2s;
+        overflow: hidden;
     }
     .kpi-card:hover { transform: translateY(-5px); }
-    .kpi-card h3 { font-size: 2rem; font-weight: 800; margin: 0.5rem 0; }
-    .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+    .kpi-card h3 { font-size: 2rem; font-weight: 800; margin: 1rem 0 0.5rem 0; word-break: break-word; }
+    .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem; }
     .charts-main-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 1.5rem; }
     .chart-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 1.25rem; padding: 1.5rem; }
     .canvas-container { position: relative; height: 260px; width: 100%; }
@@ -58,10 +59,15 @@
         @endif
     </div>
 
-    <div class="kpi-grid">
+    @php
+        $recentLogs = $recentLogs ?? [];
+        $recentDocs = $recentDocs ?? [];
+    @endphp
+
+<div class="kpi-grid">
         <div class="kpi-card">
             <div class="label">Total Documents</div>
-            <h3 style="color: var(--accent-blue)">{{ number_format($totalDocuments ?? ($stats['total'] ?? 0)) }}</h3>
+            <h3 style="color: var(--accent-blue)">{{ $stats['total'] ?? 0 }}</h3>
         </div>
         <div class="kpi-card">
             <div class="label">Actively Routing</div>
@@ -73,7 +79,7 @@
         </div>
         <div class="kpi-card">
             <div class="label">{{ $isAdmin ? 'Total System Users' : 'Department Members' }}</div>
-            <h3 style="color: var(--accent-orange)">{{ $stats['total_users'] ?? $stats['department_users'] ?? 0 }}</h3>
+            <h3 style="color: var(--accent-orange)">{{ $stats['total_users'] ?? ($stats['department_users'] ?? 0) }}</h3>
         </div>
     </div>
 
@@ -118,10 +124,10 @@
                 @if($isAdmin)
                     @forelse($recentLogs ?? [] as $log)
                         <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
-                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $log->created_at->diffForHumans() }}</div>
+                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $log->created_at ? $log->created_at->diffForHumans() : 'N/A' }}</div>
                             <div class="text-white small">
-                                <strong>{{ $log->user_name ?? 'System' }}</strong> {{ $log->action }}
-                                <br><small class="text-muted">Document: {{ $log->document->title ?? 'N/A' }}</small>
+                                <strong>{{ $log->user_name ?? 'System' }}</strong> {{ $log->action ?? 'No action recorded' }}
+                                <br><small class="text-muted">Document: {{ $log->document?->title ?? 'N/A' }}</small>
                             </div>
                         </div>
                     @empty
@@ -130,10 +136,10 @@
                 @else
                     @forelse($recentDocs ?? [] as $doc)
                         <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
-                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $doc->created_at->diffForHumans() }}</div>
+                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $doc->created_at ? $doc->created_at->diffForHumans() : 'N/A' }}</div>
                             <div class="text-white small">
-                                <strong>{{ $doc->title }}</strong>
-                                <br><small class="text-muted">Status: {{ $doc->status }}</small>
+                                <strong>{{ $doc->title ?? 'Untitled document' }}</strong>
+                                <br><small class="text-muted">Status: {{ $doc->status ?? 'Unknown' }}</small>
                             </div>
                         </div>
                     @empty

@@ -287,6 +287,10 @@
                 <div class="meta-value">#{{ $document->id }}</div>
             </div>
             <div class="meta-item">
+                <div class="meta-label">🔖 QR Code ID</div>
+                <div class="meta-value">{{ $document->qr_id ?? 'N/A' }}</div>
+            </div>
+            <div class="meta-item">
                 <div class="meta-label">Status</div>
                 <span class="status-badge status-{{ strtolower(str_replace(' ', '-', $document->status)) }}">
                     {{ $document->status }}

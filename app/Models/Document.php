@@ -23,22 +23,27 @@ class Document extends Model
         'origin_office_id',
         'current_office_id',
         'destination_office_id',
+        'destination_offices',
         'receiver_user_id',
         'uploaded_by',
         'file_path',
         'status',
         'qr_code',
+        'qr_id',
         'due_date',
         'receiver_signature',
         'qr_scanned_at',
         'received_at',
         'routing_notes',
+        'routing_history',
     ];
 
     protected $casts = [
         'due_date' => 'datetime',
         'qr_scanned_at' => 'datetime',
         'received_at' => 'datetime',
+        'destination_offices' => 'array',
+        'routing_history' => 'array',
     ];
 
     /**

@@ -63,20 +63,20 @@
                     <h6 class="text-white mt-4">Routing Information</h6>
                     <div class="mb-3">
                         <label class="form-label text-white">Origin Office *</label>
-                        <select name="origin" class="form-control" required>
+                        <select name="origin_office_id" class="form-control" required>
                             <option value="" disabled selected>Select origin office</option>
                             @foreach($offices as $office)
-                                <option value="{{ $office }}">{{ $office }}</option>
+                                <option value="{{ $office->id ?? $office }}">{{ $office->name ?? $office }}</option>
                             @endforeach
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label text-white">Destination Office *</label>
-                        <select name="destination" class="form-control" required>
+                        <select name="destination_office_id" class="form-control" required>
                             <option value="" disabled selected>Select destination office</option>
                             @foreach($offices as $office)
-                                <option value="{{ $office }}">{{ $office }}</option>
+                                <option value="{{ $office->id ?? $office }}">{{ $office->name ?? $office }}</option>
                             @endforeach
                         </select>
                     </div>

@@ -73,6 +73,12 @@
                             <span class="small fw-bold">{{ $doc->priority }}</span>
                         </div>
                     </div>
+                    @if($doc->qr_id)
+                        <div class="mb-4">
+                            <small class="text-secondary d-block mb-1">QR Code ID</small>
+                            <span class="small fw-bold" style="color: #22c1ff;">{{ $doc->qr_id }}</span>
+                        </div>
+                    @endif
                     @if($doc->receiverUser)
                         <div class="mb-4">
                             <small class="text-secondary d-block mb-1">Receiver</small>

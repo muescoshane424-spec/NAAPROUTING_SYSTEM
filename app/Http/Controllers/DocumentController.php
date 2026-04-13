@@ -65,7 +65,10 @@ class DocumentController extends Controller
                     };
                 }
 
-                // 3. Build document payload safely
+                // 3. Generate unique QR ID
+                $qrId = 'QR-' . strtoupper(uniqid('DOC-', true));
+
+                // 4. Build document payload safely
                 $documentData = [
                     'title' => $request->title,
                     'description' => $request->description ?? 'No description provided',
@@ -88,6 +91,10 @@ class DocumentController extends Controller
                     $documentData['due_date'] = $dueDate;
                 }
 
+                if (Schema::hasColumn('documents', 'qr_id')) {
+                    $documentData['qr_id'] = $qrId;
+                }
+
                 $document = Document::create($documentData);
 
                 // Generate QR Code for the document
@@ -99,7 +106,19 @@ class DocumentController extends Controller
                 Storage::disk('public')->put($qrPath, $qrCodeData);
                 $document->update(['qr_code' => $qrPath]);
 
-                // 3. Log Activity for the Activity Tab
+                // Initialize routing history with origin office
+                if (Schema::hasColumn('documents', 'routing_history')) {
+                    $routingHistory = [
+                        [
+                            'office_id' => $request->origin_office_id,
+                            'status' => 'Origin',
+                            'timestamp' => now()->toIso8601String(),
+                        ]
+                    ];
+                    $document->update(['routing_history' => $routingHistory]);
+                }
+
+                // 5. Log Activity for the Activity Tab
                 ActivityLog::create([
                     'user' => session('user_name') ?? 'Admin User',
                     'action' => 'Document Created',
@@ -108,7 +127,7 @@ class DocumentController extends Controller
                     'meta' => json_encode(['filename' => $file->getClientOriginalName()])
                 ]);
 
-                // 4. Send notification to receiver
+                // 6. Send notification to receiver
                 try {
                     $document->notifyReceiver();
                 } catch (\Exception $e) {

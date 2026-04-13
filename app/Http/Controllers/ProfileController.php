@@ -83,11 +83,11 @@ class ProfileController extends Controller
 
         if ($path) {
             // Delete old signature if it exists
-            if ($user->signature_path) {
-                Storage::disk('public')->delete($user->signature_path);
+            if ($user->signature) {
+                Storage::disk('public')->delete($user->signature);
             }
 
-            $user->update(['signature_path' => $path]);
+            $user->update(['signature' => $path]);
             return back()->with('success', 'Digital signature updated!');
         }
 

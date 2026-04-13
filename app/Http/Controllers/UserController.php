@@ -4,42 +4,57 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Office;
+use App\Models\Department;
 use Illuminate\Support\Facades\{Hash, Auth, Storage};
 
 class UserController extends Controller
 {
     /**
-     * Handle user login with Admin-Only enforcement.
+     * Handle user login with role-based session enforcement.
      */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+        $validated = $request->validate([
+            'username' => 'required|string',
+            'password' => 'required|string',
+        ], [
+            'username.required' => 'Username or email is required.',
+            'password.required' => 'Password is required.',
         ]);
 
-        if (Auth::attempt($credentials)) {
-            $user = Auth::user();
-            
-            // Check if user is an ADMIN (Case-sensitive check)
-            if ($user->role !== 'ADMIN') {
-                Auth::logout();
-                session()->flush();
-                return back()->with('error', 'Access denied. Administrator privileges required.');
-            }
+        $input = $request->input('username');
+        $password = $request->input('password');
+        
+        // Try to find user by username or email
+        $user = User::where('username', $input)
+                    ->orWhere('email', $input)
+                    ->first();
+
+        if ($user && Hash::check($password, $user->password)) {
+            Auth::login($user);
+            $request->session()->regenerate();
 
             session([
-                'user_id'    => $user->id,
-                'user_name'  => $user->name,
-                'user_email' => $user->email,
-                'user_role'  => $user->role
+                'authenticated' => true,
+                'user_id'       => $user->id,
+                'user_name'     => $user->name,
+                'user_email'    => $user->email,
+                'user_role'     => $user->role,
+                'department_id' => $user->department_id,
             ]);
 
-            return redirect()->route('dashboard')->with('success', 'Logged in as Admin.');
+            return redirect()->route('dashboard')->with('success', 'Welcome back, '. $user->name .'.');
         }
 
-        return back()->with('error', 'Invalid credentials. Please try again.')->withInput($request->only('email'));
+        return back()->with('error', 'Invalid credentials. Please try again.')->withInput($request->only('username'));
+    }
+
+    /**
+     * Redirect the named register route to the user management page.
+     */
+    public function redirectToUsers()
+    {
+        return redirect()->route('users.index');
     }
 
     /**
@@ -47,11 +62,41 @@ class UserController extends Controller
      */
     public function index()
     {
-        // Now 'with(office)' will work because we defined it in the Model
-        $users = User::with('office')->latest()->get();
-        $offices = Office::all(); 
+        $this->authorizeAdmin();
+
+        $this->ensureDefaultDepartments();
+
+        $users = User::with('department')->latest()->get();
+        $departments = Department::all(); 
         
-        return view('users', compact('users', 'offices'));
+        return view('users', compact('users', 'departments'));
+    }
+
+    /**
+     * Show the user registration page.
+     */
+    public function create()
+    {
+        $this->authorizeAdmin();
+
+        $this->ensureDefaultDepartments();
+
+        $departments = Department::all();
+        return view('users.create', compact('departments'));
+    }
+
+    protected function ensureDefaultDepartments(): void
+    {
+        $defaultDepartments = ['ILAS', 'INET', 'ICS'];
+
+        foreach ($defaultDepartments as $name) {
+            Department::firstOrCreate([
+                'name' => $name,
+            ], [
+                'description' => null,
+                'status' => 'active',
+            ]);
+        }
     }
 
     /**
@@ -59,20 +104,22 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizeAdmin();
+
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|string|email|max:255|unique:users',
-            'password'  => 'required|string|min:8',
-            'role'      => 'required|in:ADMIN,USER,HEAD',
-            'office_id' => 'required|exists:offices,id',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users',
+            'password'      => 'required|string|min:8',
+            'role'          => 'required|in:ADMIN,USER,HEAD,staff',
+            'department_id' => 'required|exists:departments,id',
         ]);
 
         User::create([
-            'name'      => $validated['name'],
-            'email'     => $validated['email'],
-            'role'      => $validated['role'],
-            'office_id' => $validated['office_id'],
-            'password'  => Hash::make($validated['password']),
+            'name'          => $validated['name'],
+            'email'         => $validated['email'],
+            'role'          => $validated['role'],
+            'department_id' => $validated['department_id'],
+            'password'      => Hash::make($validated['password']),
         ]);
 
         return redirect()->route('users.index')->with('success', 'User account created successfully!');
@@ -83,21 +130,22 @@ class UserController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->authorizeAdmin();
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'password'  => 'nullable|string|min:8',
-            'role'      => 'required|in:ADMIN,USER,HEAD',
-            'office_id' => 'required|exists:offices,id',
+            'name'          => 'required|string|max:255',
+            'email'         => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'password'      => 'nullable|string|min:8',
+            'role'          => 'required|in:ADMIN,USER,HEAD,staff',
+            'department_id' => 'required|exists:departments,id',
         ]);
 
         $user->fill([
-            'name'      => $validated['name'],
-            'email'     => $validated['email'],
-            'role'      => $validated['role'],
-            'office_id' => $validated['office_id'],
+            'name'          => $validated['name'],
+            'email'         => $validated['email'],
+            'role'          => $validated['role'],
+            'department_id' => $validated['department_id'],
         ]);
 
         if ($request->filled('password')) {
@@ -114,6 +162,8 @@ class UserController extends Controller
      */
     public function destroy($id)
     {
+        $this->authorizeAdmin();
+
         $user = User::findOrFail($id);
         
         if (Auth::id() == $user->id) {
@@ -122,5 +172,12 @@ class UserController extends Controller
 
         $user->delete();
         return redirect()->route('users.index')->with('success', 'User removed from the system.');
+    }
+
+    protected function authorizeAdmin()
+    {
+        if (session('user_role') !== 'ADMIN') {
+            abort(403, 'Administrator privileges are required to perform this action.');
+        }
     }
 }

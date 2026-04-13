@@ -9,7 +9,9 @@ return new class extends Migration
     public function up()
     {
         Schema::table('documents', function (Blueprint $table) {
-            $table->string('status')->default('Pending Approval'); // Add this
+            if (!Schema::hasColumn('documents', 'status')) {
+                $table->string('status')->default('Pending Approval');
+            }
         });
     }
 

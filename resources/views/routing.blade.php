@@ -132,7 +132,10 @@
             <div class="text-muted small">Tracking ID: <span class="text-info">#{{ str_pad($doc->id, 6, '0', STR_PAD_LEFT) }}</span></div>
         </div>
         <div class="text-end">
-            <div class="small text-muted">Last Update</div>
+            <div class="small text-muted">Receiver</div>
+            <div class="small fw-bold text-white">{{ optional($doc->receiverUser)->name ?? 'Unassigned' }}</div>
+            <div class="small text-muted">{{ optional(optional($doc->receiverUser)->department)->name ?? 'No department' }}</div>
+            <div class="small text-muted mt-2">Last Update</div>
             <div class="small fw-bold text-white">{{ $doc->updated_at->diffForHumans() }}</div>
         </div>
     </div>
@@ -162,6 +165,21 @@
             <div class="step-label text-truncate" style="max-width: 100px;">{{ $doc->destinationOffice->name ?? 'Destination' }}</div>
         </div>
     </div>
+    <div class="row text-white mt-3">
+        <div class="col-md-4">
+            <small class="text-muted">Receiver</small>
+            <div class="fw-bold">{{ optional($doc->receiverUser)->name ?? 'Unassigned' }}</div>
+            <small class="text-muted">{{ optional(optional($doc->receiverUser)->department)->name ?? 'No department' }}</small>
+        </div>
+        <div class="col-md-4">
+            <small class="text-muted">SLA</small>
+            <div class="fw-bold">{{ $doc->sla ?? 'Standard' }}</div>
+        </div>
+        <div class="col-md-4">
+            <small class="text-muted">Status</small>
+            <div class="fw-bold">{{ $doc->status }}</div>
+        </div>
+    </div>
 
     <hr style="border-color: rgba(255,255,255,0.05); margin: 25px 0;">
 
@@ -178,8 +196,19 @@
                 @endforeach
             </select>
         </div>
+        <div class="col-md-12">
+            <label class="small text-muted mb-2 d-block">Assign or reassign receiver:</label>
+            <select name="receiver_user_id" class="form-select form-glass w-100">
+                <option value="" disabled {{ optional($doc->receiverUser)->id ? '' : 'selected' }}>Keep current receiver</option>
+                @foreach($users as $user)
+                    <option value="{{ $user->id }}" {{ optional($doc->receiverUser)->id == $user->id ? 'selected' : '' }}>
+                        {{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif
+                    </option>
+                @endforeach
+            </select>
+        </div>
         <div class="col-md-4 mt-md-4">
-            <button type="submit" class="btn-route w-100 mt-2">Update Location</button>
+            <button type="submit" class="btn-route w-100 mt-2">Update Location & Receiver</button>
         </div>
     </form>
 </div>

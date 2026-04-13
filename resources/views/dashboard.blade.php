@@ -1,6 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'System Analytics - Admin')
+@section('title')
+    {{ session('user_role') === 'ADMIN' ? 'System Analytics - Admin' : 'My Dashboard' }}
+@endsection
 
 @section('content')
 <style>
@@ -36,14 +38,19 @@
 <div class="dashboard-container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 fw-bold mb-0 text-white">System Analytics</h1>
-            <p class="text-muted small">Real-time Admin tracking for {{ now()->format('F d, Y') }}</p>
+            <h1 class="h3 fw-bold mb-0 text-white">{{ $isAdmin ? 'System Analytics' : 'User Dashboard' }}</h1>
+            <p class="text-muted small">
+                {{ $isAdmin ? 'Real-time Admin tracking' : 'Your personal work overview' }} for {{ now()->format('F d, Y') }}
+            </p>
         </div>
-        
-        @php 
-            $highPriorityCount = \App\Models\Document::where('priority', 'High')->where('status', '!=', 'Completed')->count(); 
+
+        @php
+            $highPriorityCount = \App\Models\Document::where('priority', 'High')
+                ->where('status', '!=', 'Completed')
+                ->when(!$isAdmin, fn($query) => $query->where('uploaded_by', session('user_id')))
+                ->count();
         @endphp
-        
+
         @if($highPriorityCount > 0)
             <div class="badge bg-danger p-2 shadow-sm">
                 <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ $highPriorityCount }} High Priority Tasks
@@ -53,8 +60,8 @@
 
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="label">Total System Docs</div>
-            <h3 style="color: var(--accent-blue)">{{ number_format($stats['total'] ?? 0) }}</h3>
+            <div class="label">Total Documents</div>
+            <h3 style="color: var(--accent-blue)">{{ number_format($totalDocuments ?? ($stats['total'] ?? 0)) }}</h3>
         </div>
         <div class="kpi-card">
             <div class="label">Actively Routing</div>
@@ -65,8 +72,8 @@
             <h3 style="color: var(--accent-green)">{{ $stats['completed'] ?? 0 }}</h3>
         </div>
         <div class="kpi-card">
-            <div class="label">Total System Users</div>
-            <h3 style="color: var(--accent-orange)">{{ $stats['total_users'] ?? 0 }}</h3>
+            <div class="label">{{ $isAdmin ? 'Total System Users' : 'Department Members' }}</div>
+            <h3 style="color: var(--accent-orange)">{{ $stats['total_users'] ?? $stats['department_users'] ?? 0 }}</h3>
         </div>
     </div>
 
@@ -78,44 +85,69 @@
             </div>
         </div>
 
-        <div class="chart-card">
-            <h5 class="fw-bold mb-4 text-white">System Health Score</h5>
-            <div class="satisfaction-wrapper">
-                <canvas id="uxChart"></canvas>
-                <div style="position: absolute; text-align: center;">
-                    <h2 class="mb-0 fw-bold" style="color: var(--accent-green)">92%</h2>
-                    <small class="text-muted">OPERATIONAL</small>
+        @if($isAdmin)
+            <div class="chart-card">
+                <h5 class="fw-bold mb-4 text-white">System Health Score</h5>
+                <div class="satisfaction-wrapper">
+                    <canvas id="uxChart"></canvas>
+                    <div style="position: absolute; text-align: center;">
+                        <h2 class="mb-0 fw-bold" style="color: var(--accent-green)">92%</h2>
+                        <small class="text-muted">OPERATIONAL</small>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="chart-card">
-            <h5 class="fw-bold mb-4 text-white">Top Office Load (Current)</h5>
-            <div class="canvas-container">
-                <canvas id="officeChart"></canvas>
+            <div class="chart-card">
+                <h5 class="fw-bold mb-4 text-white">Top Office Load (Current)</h5>
+                <div class="canvas-container">
+                    <canvas id="officeChart"></canvas>
+                </div>
             </div>
-        </div>
+        @else
+            <div class="chart-card">
+                <h5 class="fw-bold mb-4 text-white">Department Overview</h5>
+                <div class="canvas-container">
+                    <canvas id="officeChart"></canvas>
+                </div>
+            </div>
+        @endif
 
         <div class="chart-card">
-            <h5 class="fw-bold mb-4 text-white">Recent System Activity</h5>
+            <h5 class="fw-bold mb-4 text-white">{{ $isAdmin ? 'Recent Activity' : 'Recent Documents' }}</h5>
             <div class="activity-feed" style="max-height: 260px; overflow-y: auto;">
-                @forelse($recentLogs ?? [] as $log)
-                    <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
-                        <div class="text-info small fw-bold" style="min-width: 80px;">{{ $log->created_at->diffForHumans() }}</div>
-                        <div class="text-white small">
-                            <strong>{{ $log->user_name ?? 'System' }}</strong> {{ $log->action }}
-                            <br><small class="text-muted">Document: {{ $log->document->title ?? 'N/A' }}</small>
+                @if($isAdmin)
+                    @forelse($recentLogs ?? [] as $log)
+                        <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
+                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $log->created_at->diffForHumans() }}</div>
+                            <div class="text-white small">
+                                <strong>{{ $log->user_name ?? 'System' }}</strong> {{ $log->action }}
+                                <br><small class="text-muted">Document: {{ $log->document->title ?? 'N/A' }}</small>
+                            </div>
                         </div>
-                    </div>
-                @empty
-                    <p class="text-muted small text-center mt-5">No activity logs found.</p>
-                @endforelse
+                    @empty
+                        <p class="text-muted small text-center mt-5">No activity logs found.</p>
+                    @endforelse
+                @else
+                    @forelse($recentDocs ?? [] as $doc)
+                        <div class="d-flex gap-3 mb-3 border-bottom border-secondary pb-2">
+                            <div class="text-info small fw-bold" style="min-width: 80px;">{{ $doc->created_at->diffForHumans() }}</div>
+                            <div class="text-white small">
+                                <strong>{{ $doc->title }}</strong>
+                                <br><small class="text-muted">Status: {{ $doc->status }}</small>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-muted small text-center mt-5">No recent documents found.</p>
+                    @endforelse
+                @endif
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script src="~/resources/js/chart.js"></script>
 <script>
     Chart.defaults.color = '#94a3b8';
     Chart.defaults.font.family = "'Inter', sans-serif";

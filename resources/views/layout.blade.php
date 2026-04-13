@@ -192,6 +192,18 @@
             <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
                 <i class="bi bi-clock-history"></i> Activity
             </a>
+
+            @if(session('user_role') === 'ADMIN')
+                <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                    <i class="bi bi-people-fill"></i> Users
+                </a>
+                <a href="{{ route('register') }}" class="nav-link {{ request()->routeIs('register') ? 'active' : '' }}">
+                    <i class="bi bi-person-plus-fill"></i> Register User
+                </a>
+                <a href="{{ route('offices.index') }}" class="nav-link {{ request()->routeIs('offices.*') ? 'active' : '' }}">
+                    <i class="bi bi-building"></i> Offices
+                </a>
+            @endif
         </nav>
 
         <div class="mt-auto pt-3">
@@ -200,6 +212,7 @@
                 <div style="overflow: hidden;">
                     <div class="small fw-bold text-truncate text-white">{{ session('user_name', 'Admin User') }}</div>
                     <small class="text-muted text-truncate d-block" style="font-size: 0.7rem;">{{ session('user_email', 'admin@naap.edu') }}</small>
+                    <small class="text-info text-truncate d-block" style="font-size: 0.65rem;">{{ strtoupper(session('user_role', 'ADMIN')) }}</small>
                 </div>
             </div>
             <a href="{{ route('logout') }}" class="logout-link">

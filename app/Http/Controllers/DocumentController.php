@@ -8,6 +8,11 @@ use App\Models\Office;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use App\Models\User;
+use Carbon\Carbon;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 
 class DocumentController extends Controller
 {
@@ -16,11 +21,17 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
-        // Eager load currentOffice to prevent N+1 query issues
-        $documents = Document::with(['currentOffice', 'originOffice', 'destinationOffice'])->latest()->get();
-        $offices = Office::orderBy('name', 'asc')->get();
+        $query = Document::with(['currentOffice', 'originOffice', 'destinationOffice', 'receiverUser.department'])->latest();
 
-        return view('documents.index', compact('documents', 'offices'));
+        if (session('user_role') !== 'ADMIN') {
+            $query->where('uploaded_by', session('user_id'));
+        }
+
+        $documents = $query->paginate(15);
+        $offices = Office::orderBy('name', 'asc')->get();
+        $users = User::with('department')->orderBy('name', 'asc')->get();
+
+        return view('documents.index', compact('documents', 'offices', 'users'));
     }
 
     /**
@@ -31,8 +42,10 @@ class DocumentController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'priority' => 'required|string',
+            'sla' => 'required|in:Standard,Expedited,Critical',
             'origin_office_id' => 'required|exists:offices,id',
             'destination_office_id' => 'required|exists:offices,id',
+            'receiver_user_id' => 'required|exists:users,id',
             'file' => 'required|file|max:5120' // 5MB Limit
         ]);
 
@@ -42,8 +55,18 @@ class DocumentController extends Controller
                 $file = $request->file('file');
                 $path = $file->store('documents', 'public');
 
-                // 2. Create Document record
-                $document = Document::create([
+                // 2. Derive due date from SLA selection
+                $dueDate = null;
+                if (Schema::hasColumn('documents', 'due_date')) {
+                    $dueDate = match ($request->sla) {
+                        'Critical' => Carbon::now()->addDay(),
+                        'Expedited' => Carbon::now()->addDays(3),
+                        default => Carbon::now()->addDays(7),
+                    };
+                }
+
+                // 3. Build document payload safely
+                $documentData = [
                     'title' => $request->title,
                     'description' => $request->description ?? 'No description provided',
                     'type' => strtoupper($file->getClientOriginalExtension()),
@@ -51,10 +74,30 @@ class DocumentController extends Controller
                     'origin_office_id' => $request->origin_office_id,
                     'current_office_id' => $request->origin_office_id,
                     'destination_office_id' => $request->destination_office_id,
+                    'receiver_user_id' => $request->receiver_user_id,
                     'file_path' => $path,
                     'status' => 'Pending',
                     'uploaded_by' => session('user_id') ?? 1,
-                ]);
+                ];
+
+                if (Schema::hasColumn('documents', 'sla')) {
+                    $documentData['sla'] = $request->sla;
+                }
+
+                if (Schema::hasColumn('documents', 'due_date') && $dueDate) {
+                    $documentData['due_date'] = $dueDate;
+                }
+
+                $document = Document::create($documentData);
+
+                // Generate QR Code for the document
+                $qrCode = new QrCode(route('documents.show', $document->id), size: 300);
+                $writer = new PngWriter();
+                $result = $writer->write($qrCode);
+                $qrCodeData = $result->getString();
+                $qrPath = 'qr_codes/' . $document->id . '.png';
+                Storage::disk('public')->put($qrPath, $qrCodeData);
+                $document->update(['qr_code' => $qrPath]);
 
                 // 3. Log Activity for the Activity Tab
                 ActivityLog::create([
@@ -64,6 +107,13 @@ class DocumentController extends Controller
                     'ip' => $request->ip(),
                     'meta' => json_encode(['filename' => $file->getClientOriginalName()])
                 ]);
+
+                // 4. Send notification to receiver
+                try {
+                    $document->notifyReceiver();
+                } catch (\Exception $e) {
+                    \Log::error('Notification failed: ' . $e->getMessage());
+                }
 
                 return redirect()->route('documents.index')->with('success', 'Document uploaded and initialized successfully!');
             });
@@ -78,10 +128,14 @@ class DocumentController extends Controller
      */
     public function show($id)
     {
-        // Eager load activityLogs to show the routing history timeline
-        $document = Document::with(['originOffice', 'currentOffice', 'destinationOffice', 'activityLogs' => function($query) {
+        // Eager load activityLogs and receiver to show the routing history timeline
+        $document = Document::with(['originOffice', 'currentOffice', 'destinationOffice', 'receiverUser.department', 'activityLogs' => function($query) {
             $query->latest();
-        }])->findOrFail($id);
+        }, 'routings.fromOffice', 'routings.toOffice'])->findOrFail($id);
+
+        if (session('user_role') !== 'ADMIN' && $document->uploaded_by !== session('user_id') && $document->receiver_user_id !== session('user_id')) {
+            abort(403, 'You are not authorized to view this document.');
+        }
 
         return view('documents.show', compact('document'));
     }
@@ -93,6 +147,13 @@ class DocumentController extends Controller
     {
         $query = Document::with(['originOffice', 'currentOffice', 'destinationOffice']);
 
+        if (session('user_role') !== 'ADMIN') {
+            $query->where(function($q) {
+                $q->where('uploaded_by', session('user_id'))
+                  ->orWhere('receiver_user_id', session('user_id'));
+            });
+        }
+
         // Search logic for Tracking ID or Title
         if ($request->filled('search')) {
             $search = $request->search;
@@ -100,6 +161,22 @@ class DocumentController extends Controller
                 $q->where('id', 'like', "%$search%")
                   ->orWhere('title', 'like', "%$search%");
             });
+        }
+
+        // Date range filtering
+        if ($request->filled('from_date')) {
+            $fromDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($request->filled('to_date')) {
+            $toDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->whereDate('created_at', '<=', $toDate);
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
         }
 
         $documents = $query->latest()->paginate(10);
@@ -110,12 +187,49 @@ class DocumentController extends Controller
     /**
      * Handle the Activity Logs page logic (Route: activity.index).
      */
-    public function activityIndex()
+    public function activityIndex(Request $request)
     {
-        // Fetch logs and the documents they belong to
-        $logs = ActivityLog::with('document')->latest()->paginate(15);
+        $this->authorizeAdmin();
+
+        $query = ActivityLog::with(['document.originOffice', 'document.destinationOffice']);
+
+        // Search by document title or user
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->whereHas('document', function($d) use ($search) {
+                    $d->where('title', 'like', "%$search%");
+                })->orWhere('user', 'like', "%$search%");
+            });
+        }
+
+        // Date range filtering
+        if ($request->filled('from_date')) {
+            $fromDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($request->filled('to_date')) {
+            $toDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->whereDate('created_at', '<=', $toDate);
+        }
+
+        // Action filter
+        if ($request->filled('action')) {
+            $action = $request->action;
+            $query->whereRaw('LOWER(action) LIKE ?', ["%$action%"]);
+        }
+
+        $logs = $query->latest()->paginate(15);
         
         return view('activity', compact('logs'));
+    }
+
+    protected function authorizeAdmin()
+    {
+        if (session('user_role') !== 'ADMIN') {
+            abort(403, 'Administrator privileges are required to access this page.');
+        }
     }
 
     /**
@@ -125,6 +239,10 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
 
+        if (session('user_role') !== 'ADMIN' && $document->uploaded_by !== session('user_id')) {
+            abort(403, 'You are not authorized to delete this document.');
+        }
+
         // Delete the physical file from storage
         if ($document->file_path) {
             Storage::disk('public')->delete($document->file_path);
@@ -133,5 +251,26 @@ class DocumentController extends Controller
         $document->delete();
 
         return redirect()->route('documents.index')->with('success', 'Document deleted successfully.');
+    }
+
+    /**
+     * Check document status for real-time updates (API endpoint)
+     */
+    public function checkStatus($id)
+    {
+        $document = Document::with(['routings' => function($query) {
+            $query->latest()->limit(1);
+        }])->findOrFail($id);
+
+        // Get the last routing update
+        $lastRouting = $document->routings()->latest()->first();
+        
+        return response()->json([
+            'status' => $document->status,
+            'current_office' => $document->currentOffice?->name,
+            'last_update' => $lastRouting?->updated_at ?? $document->updated_at,
+            'received_at' => $document->received_at,
+            'updated' => $document->updated_at->diffInMinutes(now()) < 1 // True if updated in last minute
+        ]);
     }
 }

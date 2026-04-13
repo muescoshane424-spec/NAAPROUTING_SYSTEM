@@ -15,17 +15,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::firstOrCreate([
-            'email' => 'test@example.com',
+        // Create or update the seeded admin user
+        $user = User::firstOrCreate([
+            'email' => 'admin@naap.org',
         ], [
-            'name' => 'Test User',
+            'name' => 'Admin User',
+            'username' => 'admin',
+            'role' => 'ADMIN',
             'email_verified_at' => now(),
             'password' => bcrypt('password'),
         ]);
 
+        if ($user->role !== 'ADMIN' || $user->username !== 'admin') {
+            $user->fill([
+                'role' => 'ADMIN',
+                'username' => 'admin',
+            ]);
+            $user->save();
+        }
+
         $this->call([
+            DepartmentSeeder::class,
             OfficeSeeder::class,
             DocumentSeeder::class,
         ]);

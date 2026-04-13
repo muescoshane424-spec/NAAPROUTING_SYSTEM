@@ -9,6 +9,8 @@ class SettingsController extends Controller
 {
     public function index()
     {
+        $this->authorizeAdmin();
+
         // Convert table rows into a simple associative array for the view
         $settings = DB::table('settings')->pluck('value', 'key')->toArray();
         return view('settings', compact('settings'));
@@ -16,6 +18,8 @@ class SettingsController extends Controller
 
     public function update(Request $request)
     {
+        $this->authorizeAdmin();
+
         $settingKeys = [
             '2fa_enabled', 'min_password', 'session_timeout', 
             'auto_qr', 'qr_size', 'email_notif', 'log_retention'
@@ -35,5 +39,12 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'System settings updated successfully!');
+    }
+
+    protected function authorizeAdmin()
+    {
+        if (session('user_role') !== 'ADMIN') {
+            abort(403, 'Administrator privileges are required to access this page.');
+        }
     }
 }

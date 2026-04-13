@@ -42,6 +42,20 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label text-white">SLA</label>
+                        <select name="sla" class="form-control @error('sla') is-invalid @enderror" required>
+                            <option value="" disabled {{ old('sla') ? '' : 'selected' }}>Select SLA</option>
+                            <option value="Standard" {{ old('sla') === 'Standard' ? 'selected' : '' }}>Standard</option>
+                            <option value="Expedited" {{ old('sla') === 'Expedited' ? 'selected' : '' }}>Expedited</option>
+                            <option value="Critical" {{ old('sla') === 'Critical' ? 'selected' : '' }}>Critical</option>
+                        </select>
+                        @error('sla')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="text-secondary">SLA determines due date, alerts, and risk status.</small>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label text-white">Upload File *</label>
                         <input type="file" name="file" class="form-control" required>
                     </div>
@@ -63,6 +77,16 @@
                             <option value="" disabled selected>Select destination office</option>
                             @foreach($offices as $office)
                                 <option value="{{ $office }}">{{ $office }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-white">Receiver User *</label>
+                        <select name="receiver_user_id" class="form-control" required>
+                            <option value="" disabled selected>Select receiver</option>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }} @if($user->department)({{ $user->department->name }})@endif</option>
                             @endforeach
                         </select>
                     </div>

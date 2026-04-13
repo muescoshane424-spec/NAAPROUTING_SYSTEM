@@ -11,6 +11,8 @@ class ReportController extends Controller
 {
     public function index()
     {
+        $this->authorizeAdmin();
+
         // Summary Stats
         $summary = [
             'total_processed' => Document::count(),
@@ -44,6 +46,8 @@ class ReportController extends Controller
 
     public function exportCSV()
     {
+        $this->authorizeAdmin();
+
         $fileName = 'system_report_' . date('Y-m-d') . '.csv';
         $headers = [
             "Content-type"        => "text/csv",
@@ -74,5 +78,12 @@ class ReportController extends Controller
             });
             fclose($file);
         }, 200, $headers);
+    }
+
+    protected function authorizeAdmin()
+    {
+        if (session('user_role') !== 'ADMIN') {
+            abort(403, 'Administrator privileges are required to access this page.');
+        }
     }
 }

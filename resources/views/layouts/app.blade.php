@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>NAAP Admin - @yield('title')</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -83,6 +84,50 @@
             font-weight: 600;
         }
 
+        /* PAGINATION STYLING */
+        .pagination {
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .pagination .page-link {
+            background: var(--panel) !important;
+            border: 1px solid var(--panel-border) !important;
+            color: var(--accent-cyan) !important;
+            border-radius: 8px !important;
+            margin: 0 4px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .pagination .page-link:hover {
+            background: rgba(34, 211, 238, 0.2) !important;
+            border-color: var(--accent-cyan) !important;
+            box-shadow: 0 0 10px rgba(34, 211, 238, 0.2);
+        }
+
+        .pagination .page-item.active .page-link {
+            background: var(--accent-cyan) !important;
+            border-color: var(--accent-cyan) !important;
+            color: #0b1228 !important;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            background: rgba(30, 41, 59, 0.3) !important;
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            color: #64748b !important;
+            cursor: not-allowed;
+        }
+
+        /* Pagination span and arrow text colors */
+        .pagination .page-link span {
+            color: var(--text-dim) !important;
+        }
+
+        .pagination .page-item.active .page-link span {
+            color: #0b1228 !important;
+        }
+
         /* HEADER & NOTIFICATIONS */
         header {
             background: rgba(11, 18, 40, 0.8);
@@ -155,6 +200,7 @@
             </button>
         </div>
 
+        @php $isAdmin = session('user_role') === 'ADMIN'; @endphp
         <nav>
             <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <i class="bi bi-grid-fill"></i> Dashboard
@@ -168,21 +214,25 @@
             <a href="{{ route('track.index') }}" class="nav-link {{ request()->routeIs('track.*') ? 'active' : '' }}">
                 <i class="bi bi-geo-alt-fill"></i> Tracking
             </a>
-            <a href="{{ route('offices.index') }}" class="nav-link {{ request()->routeIs('offices.*') ? 'active' : '' }}">
-                <i class="bi bi-building-fill"></i> Offices
-            </a>
-            <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                <i class="bi bi-people-fill"></i> User Management
-            </a>
-            <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                <i class="bi bi-graph-up-arrow"></i> Reports
-            </a>
-            <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
-                <i class="bi bi-clock-history"></i> Activity
-            </a>
-            <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
-                <i class="bi bi-gear-fill"></i> Settings
-            </a>
+
+            @if($isAdmin)
+                <a href="{{ route('offices.index') }}" class="nav-link {{ request()->routeIs('offices.*') ? 'active' : '' }}">
+                    <i class="bi bi-building-fill"></i> Offices
+                </a>
+                <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                    <i class="bi bi-people-fill"></i> User Management
+                </a>
+                <a href="{{ route('reports.index') }}" class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                    <i class="bi bi-graph-up-arrow"></i> Reports
+                </a>
+                <a href="{{ route('activity.index') }}" class="nav-link {{ request()->routeIs('activity.*') ? 'active' : '' }}">
+                    <i class="bi bi-clock-history"></i> Activity
+                </a>
+                <a href="{{ route('settings.index') }}" class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                    <i class="bi bi-gear-fill"></i> Settings
+                </a>
+            @endif
+
             <a href="{{ route('profile') }}" class="nav-link {{ request()->routeIs('profile') ? 'active' : '' }}">
                 <i class="bi bi-person-circle"></i> My Profile
             </a>
@@ -194,6 +244,7 @@
                 <div style="overflow: hidden;">
                     <div class="small fw-bold text-truncate text-white">{{ session('user_name', 'Admin') }}</div>
                     <small class="text-muted text-truncate d-block" style="font-size: 0.7rem;">{{ session('user_email', 'admin@naap.edu') }}</small>
+                    <small class="text-info text-truncate d-block" style="font-size: 0.65rem;">{{ strtoupper(session('user_role', 'USER')) }}</small>
                 </div>
             </div>
             <a href="{{ route('logout') }}" class="logout-link text-decoration-none" style="color: #fb7185; font-size: 0.85rem; font-weight: 600; padding: 8px 16px; display: block;">
@@ -249,6 +300,36 @@
     @yield('scripts')
     
     <script>
+        // Apply saved theme on page load
+        function applyTheme(theme) {
+            const root = document.documentElement;
+            if (theme === 'dark') {
+                root.style.setProperty('--bg', '#0b1228');
+                root.style.setProperty('--sidebar-bg', '#161e31');
+                root.style.setProperty('--accent-cyan', '#22d3ee');
+                root.style.setProperty('--accent-purple', '#a855f7');
+                root.style.setProperty('--text-dim', '#94a3b8');
+                root.style.setProperty('--panel', 'rgba(30, 41, 59, 0.45)');
+                root.style.setProperty('--panel-border', 'rgba(255, 255, 255, 0.08)');
+                document.body.style.backgroundColor = '#0b1228';
+                document.body.style.color = '#f8fafc';
+            } else {
+                root.style.setProperty('--bg', '#f8fafc');
+                root.style.setProperty('--sidebar-bg', '#e2e8f0');
+                root.style.setProperty('--accent-cyan', '#0891b2');
+                root.style.setProperty('--accent-purple', '#7c3aed');
+                root.style.setProperty('--text-dim', '#475569');
+                root.style.setProperty('--panel', 'rgba(226, 232, 240, 0.8)');
+                root.style.setProperty('--panel-border', 'rgba(15, 23, 42, 0.1)');
+                document.body.style.backgroundColor = '#f8fafc';
+                document.body.style.color = '#1e293b';
+            }
+        }
+
+        // Load saved theme on page load
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme);
+
         const body = document.body;
         const hamburgerMenu = document.getElementById('hamburgerMenu');
         const closeSidebar = document.getElementById('closeSidebar');
@@ -271,6 +352,29 @@
                 bsAlert.close();
             });
         }, 5000);
+
+        // Show notification toast
+        window.showNotification = function(message, type = 'success') {
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'i';
+            const bgColor = type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6';
+            const html = `
+                <div style="position: fixed; top: 20px; right: 20px; background: ${bgColor}; color: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-weight: 600; z-index: 9999; animation: slideIn 0.3s ease-out;">
+                    <span style="font-size: 1.2rem; margin-right: 12px;">${icon}</span>${message}
+                </div>
+                <style>
+                    @keyframes slideIn {
+                        from { transform: translateX(400px); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                </style>
+            `;
+            const container = document.createElement('div');
+            container.innerHTML = html;
+            document.body.appendChild(container.firstElementChild);
+            setTimeout(() => {
+                container.firstElementChild?.remove();
+            }, 3000);
+        };
     </script>
 </body>
 </html>

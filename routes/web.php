@@ -1,11 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{
-    DashboardController, DocumentController, RoutingController,
-    QRController, OfficeController, UserController, ReportController,
-    SettingsController, ProfileController
-};
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\RoutingController;
+use App\Http\Controllers\QRController;
+use App\Http\Controllers\OfficeController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ProfileController;
 
 // --- Public Routes ---
 // The 'guest' logic: Ensure users aren't redirected back here if they are already logged in
@@ -16,17 +21,25 @@ Route::get('/', function() {
     return view('login');
 })->name('home');
 
+Route::get('/login', function() {
+    if (session()->has('user_id')) {
+        return redirect()->route('dashboard');
+    }
+    return view('login');
+})->name('login');
+
 Route::post('/login', [UserController::class, 'login'])->name('login.submit');
 
 // --- Authenticated Admin Routes ---
-// Removed 'role:ADMIN' middleware to fix "Page Expired" / Redirect loops
-Route::middleware(['auth.session'])->group(function () {
+Route::middleware([\App\Http\Middleware\EnsureAuthenticated::class])->group(function () {
 
     Route::get('/logout', function () {
         session()->flush();
         Auth::logout(); // Ensure Laravel Auth is also cleared
         return redirect()->route('home')->with('success', 'Logged out successfully.');
     })->name('logout');
+
+    Route::get('/register', [UserController::class, 'create'])->name('register');
 
     // --- Core Admin Dashboard ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -35,10 +48,18 @@ Route::middleware(['auth.session'])->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('offices', OfficeController::class);
 
+    // --- API Endpoints for Departments ---
+    Route::get('/api/departments/{name}/offices', [OfficeController::class, 'getDepartmentOffices']);
+    Route::get('/api/departments/{name}/users', [OfficeController::class, 'getDepartmentUsers']);
+    Route::post('/api/departments/rename', [OfficeController::class, 'renameDepartment']);
+    Route::get('/api/offices/{id}/staff', [OfficeController::class, 'getOfficeStaff']);
+    Route::get('/api/departments/{department}/staff', [OfficeController::class, 'getDepartmentStaff']);
+
     // --- Document Management & Tracking ---
     Route::resource('documents', DocumentController::class);
     Route::get('/track', [DocumentController::class, 'trackIndex'])->name('track.index');
-    Route::get('/track/{id}', [DocumentController::class, 'show'])->name('track.detail'); 
+    Route::get('/track/{id}', [DocumentController::class, 'show'])->name('track.detail');
+    Route::get('/api/documents/{id}/status', [DocumentController::class, 'checkStatus'])->name('documents.status');
     Route::get('/activity', [DocumentController::class, 'activityIndex'])->name('activity.index');
 
     // --- Routing & QR System ---

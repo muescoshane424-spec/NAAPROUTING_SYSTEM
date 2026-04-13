@@ -12,7 +12,13 @@
         transition: all 0.3s ease;
     }
 
-    .custom-table thead { background: rgba(255, 255, 255, 0.03); }
+    .custom-table {
+        background: transparent !important;
+        color: white !important;
+    }
+    .custom-table thead {
+        background: rgba(255, 255, 255, 0.03);
+    }
     .custom-table th {
         font-size: 0.75rem;
         text-transform: uppercase;
@@ -20,11 +26,31 @@
         color: var(--accent-cyan);
         padding: 15px;
         border-bottom: 1px solid var(--panel-border);
+        background: transparent !important;
     }
     .custom-table td {
         padding: 15px;
         vertical-align: middle;
         border-bottom: 1px solid rgba(255,255,255,0.03);
+        background: transparent !important;
+        color: rgba(255,255,255,0.85) !important;
+    }
+    .custom-table th {
+        color: rgba(255,255,255,0.9) !important;
+    }
+    .custom-table td.text-dim {
+        color: rgba(255,255,255,0.65) !important;
+    }
+    .table-responsive {
+        background: transparent;
+    }
+    #tableSearch {
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.12) !important;
+        color: white !important;
+    }
+    #tableSearch::placeholder {
+        color: rgba(255,255,255,0.65) !important;
     }
 
     .user-avatar {
@@ -35,17 +61,33 @@
         font-weight: bold; font-size: 0.9rem; color: #0b1228; /* Darker text for contrast on cyan */
     }
 
-    .form-label { font-weight: 600; font-size: 0.85rem; color: var(--text-dim); }
-    .form-control-custom {
-        background: rgba(0,0,0,0.2) !important;
+    .form-label { font-weight: 600; font-size: 0.85rem; color: var(--text-dim); background: transparent; }
+    .form-control-custom,
+    .form-select.form-control-custom {
+        background: rgba(255,255,255,0.06) !important;
         border: 1px solid var(--panel-border) !important;
-        color: white !important;
+        color: #fff !important;
         border-radius: 12px;
         padding: 12px;
+        box-shadow: none !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
     }
-    .form-control-custom:focus {
+    .form-control-custom::placeholder {
+        color: rgba(255,255,255,0.75) !important;
+    }
+    .form-select.form-control-custom option {
+        color: #0b1228 !important;
+        background: #f8fafc !important;
+    }
+    .form-select.form-control-custom option:disabled {
+        color: rgba(75,85,99,0.75) !important;
+    }
+    .form-control-custom:focus,
+    .form-select.form-control-custom:focus {
         border-color: var(--accent-cyan) !important;
-        box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
+        box-shadow: 0 0 12px rgba(34, 211, 238, 0.12) !important;
     }
 
     .btn-action {
@@ -118,6 +160,8 @@
                         <tr>
                             <th>User</th>
                             <th>Email Address</th>
+                            <th>Role</th>
+                            <th>Department</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
@@ -131,6 +175,8 @@
                                 </div>
                             </td>
                             <td class="text-dim">{{ $user->email }}</td>
+                            <td>{{ $user->role }}</td>
+                            <td class="text-dim">{{ $user->department->name ?? 'Unassigned' }}</td>
                             <td class="text-end">
                                 <button class="btn-action btn-edit me-1" 
                                         onclick="prepareEdit({{ json_encode($user) }})">
@@ -164,14 +210,36 @@
                     
                     <div class="mb-3">
                         <label class="form-label">Full Name</label>
-                        <input type="text" name="name" id="userNameInput" class="form-control form-control-custom @error('name') is-invalid @enderror" placeholder="e.g. John Doe" required>
+                        <input type="text" name="name" id="userNameInput" value="{{ old('name') }}" class="form-control form-control-custom @error('name') is-invalid @enderror" placeholder="e.g. John Doe" required>
                         @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Email</label>
-                        <input type="email" name="email" id="userEmailInput" class="form-control form-control-custom @error('email') is-invalid @enderror" placeholder="admin@naap.edu" required>
+                        <input type="email" name="email" id="userEmailInput" value="{{ old('email') }}" class="form-control form-control-custom @error('email') is-invalid @enderror" placeholder="admin@naap.edu" required>
                         @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select name="role" id="userRoleInput" class="form-select form-control-custom @error('role') is-invalid @enderror" required>
+                            <option value="" disabled {{ old('role') ? '' : 'selected' }}>Select role</option>
+                            <option value="ADMIN" {{ old('role') === 'ADMIN' ? 'selected' : '' }}>ADMIN</option>
+                            <option value="USER" {{ old('role') === 'USER' ? 'selected' : '' }}>USER</option>
+                            <option value="HEAD" {{ old('role') === 'HEAD' ? 'selected' : '' }}>HEAD</option>
+                        </select>
+                        @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select name="department_id" id="userDepartmentInput" class="form-select form-control-custom @error('department_id') is-invalid @enderror" required>
+                            <option value="" disabled {{ old('department_id') ? '' : 'selected' }}>Select department</option>
+                            @foreach($departments as $department)
+                                <option value="{{ $department->id }}" {{ old('department_id') == $department->id ? 'selected' : '' }}>{{ $department->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('department_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="mb-4">
@@ -221,6 +289,8 @@
         
         document.getElementById('userNameInput').value = user.name;
         document.getElementById('userEmailInput').value = user.email;
+        document.getElementById('userRoleInput').value = user.role || 'USER';
+        document.getElementById('userDepartmentInput').value = user.department_id || '';
         document.getElementById('userPassInput').required = false;
         document.getElementById('userNameInput').focus();
     };
@@ -241,6 +311,8 @@
         methodField.innerHTML = '';
         form.reset();
         document.getElementById('userPassInput').required = true;
+        document.getElementById('userRoleInput').value = '';
+        document.getElementById('userDepartmentInput').value = '';
     };
 </script>
 @endsection

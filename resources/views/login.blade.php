@@ -51,7 +51,7 @@
 <body>
     <div class="wrapper">
         <h1>NAAP Document Routing</h1>
-        <p class="subtitle">Secure admin login for document tracking & routing</p>
+        
 
         {{-- Success/Error Alerts --}}
         @if(session('error'))
@@ -69,8 +69,8 @@
         <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
             @csrf
             <div class="field">
-                <label for="email">Email Address</label>
-                <input id="email" name="email" type="email" placeholder="admin@naap.edu" value="{{ old('email') }}" required autofocus>
+                <label for="username">Username or Email</label>
+                <input id="username" name="username" type="text" placeholder="admin or admin@naap.org" value="{{ old('username') }}" required autofocus>
             </div>
             <div class="field">
                 <label for="password">Password</label>
@@ -80,7 +80,7 @@
         </form>
 
         <div class="helper"><a href="#">Forgot Password?</a></div>
-        <div class="small">Authorized personnel only. All activity logs are recorded for security purposes.</div>
+        <div class="small">© 2024 NAAP. All rights reserved.</div>
     </div>
 
     <script>

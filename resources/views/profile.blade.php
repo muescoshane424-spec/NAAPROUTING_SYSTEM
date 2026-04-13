@@ -96,6 +96,19 @@
         <div class="col-12 col-xl-4">
             <div class="info-card">
                 <h6 class="fw-bold mb-4 text-purple"><i class="bi bi-pen me-2"></i>Digital Signature</h6>
+                
+                @if($user->signature)
+                <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <strong>Signature Saved!</strong> You can edit or upload a new one below.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                <div style="border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; background: rgba(255,255,255,0.03);">
+                    <img src="{{ asset('storage/' . $user->signature) }}" alt="Your Signature" style="max-width: 100%; max-height: 120px; border-radius: 8px;">
+                    <p class="small text-dim mt-2 mb-0">Your current digital signature</p>
+                </div>
+                @endif
+                
                 <ul class="nav nav-pills nav-justified mb-3 bg-dark rounded-3 p-1">
                     <li class="nav-item">
                         <button class="nav-link active small py-1" data-bs-toggle="pill" data-bs-target="#draw-sig">Draw</button>
@@ -205,18 +218,53 @@
 
     document.getElementById('sig-form').addEventListener('submit', function() {
         document.getElementById('signature_data').value = canvas.toDataURL();
+        showNotification('Signature saved successfully!', 'success');
     });
+
+    // --- SHOW SUCCESS NOTIFICATION IF SESSION MESSAGE ---
+    @if(session('success'))
+        document.addEventListener('DOMContentLoaded', function() {
+            showNotification('{{ session('success') }}', 'success');
+        });
+    @endif
 
     // --- LIGHT/DARK MODE PERSISTENCE ---
     const themeToggle = document.getElementById('themeToggle');
-    themeToggle.addEventListener('change', function() {
-        if(this.checked) {
-            document.documentElement.setAttribute('data-theme', 'dark');
-            localStorage.setItem('theme', 'dark');
+    
+    // Load saved theme on page load
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    themeToggle.checked = savedTheme === 'dark';
+    applyTheme(savedTheme);
+    
+    function applyTheme(theme) {
+        const root = document.documentElement;
+        if (theme === 'dark') {
+            root.style.setProperty('--bg', '#0b1228');
+            root.style.setProperty('--sidebar-bg', '#161e31');
+            root.style.setProperty('--accent-cyan', '#22d3ee');
+            root.style.setProperty('--accent-purple', '#a855f7');
+            root.style.setProperty('--text-dim', '#94a3b8');
+            root.style.setProperty('--panel', 'rgba(30, 41, 59, 0.45)');
+            root.style.setProperty('--panel-border', 'rgba(255, 255, 255, 0.08)');
+            document.body.style.backgroundColor = '#0b1228';
+            document.body.style.color = '#f8fafc';
         } else {
-            document.documentElement.setAttribute('data-theme', 'light');
-            localStorage.setItem('theme', 'light');
+            root.style.setProperty('--bg', '#f8fafc');
+            root.style.setProperty('--sidebar-bg', '#e2e8f0');
+            root.style.setProperty('--accent-cyan', '#0891b2');
+            root.style.setProperty('--accent-purple', '#7c3aed');
+            root.style.setProperty('--text-dim', '#475569');
+            root.style.setProperty('--panel', 'rgba(226, 232, 240, 0.8)');
+            root.style.setProperty('--panel-border', 'rgba(15, 23, 42, 0.1)');
+            document.body.style.backgroundColor = '#f8fafc';
+            document.body.style.color = '#1e293b';
         }
+    }
+    
+    themeToggle.addEventListener('change', function() {
+        const theme = this.checked ? 'dark' : 'light';
+        applyTheme(theme);
+        localStorage.setItem('theme', theme);
     });
 </script>
 @endsection

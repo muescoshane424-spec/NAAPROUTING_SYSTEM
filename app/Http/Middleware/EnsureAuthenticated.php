@@ -9,7 +9,7 @@ class EnsureAuthenticated
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!$request->session()->get('authenticated', false)) {
+        if (!$request->session()->get('authenticated', false) || !$request->session()->has('user_id')) {
             return redirect()->route('home');
         }
 

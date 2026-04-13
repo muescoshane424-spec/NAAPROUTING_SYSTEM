@@ -18,6 +18,15 @@ class DocumentSeeder extends Seeder
     public function run(): void
     {
         $offices = Office::all();
+        $user = \App\Models\User::firstOrCreate(
+            ['email' => 'admin@naap.org'],
+            ['name' => 'Admin User', 'username' => 'admin', 'role' => 'ADMIN', 'password' => bcrypt('password')]
+        );
+
+        if ($user->role !== 'ADMIN' || $user->username !== 'admin') {
+            $user->fill(['role' => 'ADMIN', 'username' => 'admin']);
+            $user->save();
+        }
         $statuses = ['pending', 'in_transit', 'completed'];
         $priorities = ['low', 'medium', 'high'];
         $types = ['application', 'report', 'memo', 'contract', 'certificate'];
@@ -50,7 +59,7 @@ class DocumentSeeder extends Seeder
                 'origin_office_id' => $originOffice->id,
                 'current_office_id' => $status === 'completed' ? $destinationOffice->id : $originOffice->id,
                 'destination_office_id' => $destinationOffice->id,
-                'uploaded_by' => 'system',
+                'uploaded_by' => $user->id,
                 'file_path' => 'documents/sample_' . uniqid() . '.pdf',
                 'status' => $status,
                 'qr_code' => 'NAAP-' . strtoupper(substr(md5($docData['title']), 0, 8)),
@@ -60,7 +69,7 @@ class DocumentSeeder extends Seeder
 
             // Add some activity logs
             ActivityLog::create([
-                'user' => 'system',
+                'user' => $user->name,
                 'action' => 'Document created',
                 'document_id' => $doc->id,
                 'ip' => '127.0.0.1',
@@ -70,7 +79,7 @@ class DocumentSeeder extends Seeder
 
             if ($status === 'in_transit') {
                 ActivityLog::create([
-                    'user' => 'system',
+                    'user' => $user->name,
                     'action' => 'Document routed',
                     'document_id' => $doc->id,
                     'ip' => '127.0.0.1',

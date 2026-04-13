@@ -15,10 +15,12 @@ class OfficeSeeder extends Seeder
      */
     public function run(): void
     {
-        Office::create(['name' => 'Registrar', 'department' => 'Academic Affairs', 'head' => 'Dr. Smith', 'contact' => 'registrar@naap.edu']);
-        Office::create(['name' => 'Accounting', 'department' => 'Finance', 'head' => 'Ms. Johnson', 'contact' => 'accounting@naap.edu']);
-        Office::create(['name' => 'HR', 'department' => 'Human Resources', 'head' => 'Mr. Brown', 'contact' => 'hr@naap.edu']);
-        Office::create(['name' => 'Dean\'s Office', 'department' => 'Administration', 'head' => 'Dean Lee', 'contact' => 'dean@naap.edu']);
-        Office::create(['name' => 'Library', 'department' => 'Academic Support', 'head' => 'Ms. Davis', 'contact' => 'library@naap.edu']);
+        // Academic Affairs Department Offices
+        Office::firstOrCreate(['name' => 'Registrar'], ['department' => 'Academic Affairs']);
+        Office::firstOrCreate(['name' => 'Academic Dean'], ['department' => 'Academic Affairs']);
+
+        // Administration Department Offices
+        Office::firstOrCreate(['name' => 'Finance Office'], ['department' => 'Administration']);
+        Office::firstOrCreate(['name' => 'HR Office'], ['department' => 'Administration']);
     }
 }

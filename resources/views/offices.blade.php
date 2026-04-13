@@ -136,7 +136,8 @@
                         <div class="card-subtitle text-truncate">{{ $office->head ?? 'No Head Assigned' }}</div>
                     </div>
                 </div>
-                <button class="btn-manage-node">
+                <button class="btn-manage-node" data-bs-toggle="modal" data-bs-target="#editOfficeModal" 
+                    onclick="editOffice({{ $office->id }}, '{{ $office->name }}', '{{ $office->department }}', '{{ $office->head }}', '{{ $office->status }}')">
                     <i class="bi bi-pencil-square"></i> Manage
                 </button>
             </div>
@@ -166,7 +167,8 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn-manage-node">
+                <button class="btn-manage-node" data-bs-toggle="modal" data-bs-target="#manageDeptModal" 
+                    onclick="loadDepartmentData('{{ $dept->department }}')">
                     <i class="bi bi-pencil-square"></i> Manage
                 </button>
             </div>
@@ -225,4 +227,194 @@
     </div>
 </div>
 
+{{-- MODAL FOR EDITING OFFICE --}}
+<div class="modal fade" id="editOfficeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: #161e31; border: 1px solid var(--panel-border); border-radius: 24px; color: white;">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="fw-bold">Edit Office</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editOfficeForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="small text-dim fw-bold mb-2 uppercase">Office Name</label>
+                        <input type="text" name="name" id="editOfficeName" class="form-control form-input-dark" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-dim fw-bold mb-2 uppercase">Department</label>
+                        <input type="text" name="department" id="editOfficeDept" class="form-control form-input-dark" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small text-dim fw-bold mb-2 uppercase">Head</label>
+                        <input type="text" name="head" id="editOfficeHead" class="form-control form-input-dark">
+                    </div>
+                    <div class="mb-0">
+                        <label class="small text-dim fw-bold mb-2 uppercase">Status</label>
+                        <select name="status" id="editOfficeStatus" class="form-select form-input-dark">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0 gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1 py-2 fw-bold" style="border-radius: 12px; background: var(--accent-cyan); border:none; color:#0b1228;">
+                        Update
+                    </button>
+                    <button type="button" class="btn btn-danger flex-grow-1 py-2 fw-bold" id="deleteOfficeBtn" style="border-radius: 12px;">
+                        Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL FOR MANAGING DEPARTMENT --}}
+<div class="modal fade" id="manageDeptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: #161e31; border: 1px solid var(--panel-border); border-radius: 24px; color: white;">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="fw-bold">Manage Department: <span id="deptName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <h6 class="text-cyan fw-bold mb-3">Offices in Department</h6>
+                <div id="deptOfficesList" style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;">
+                    <p class="text-dim text-center py-3">Loading...</p>
+                </div>
+
+                <h6 class="text-cyan fw-bold mb-3">Users in Department</h6>
+                <div id="deptUsersList" style="max-height: 200px; overflow-y: auto;">
+                    <p class="text-dim text-center py-3">Loading...</p>
+                </div>
+
+                <div class="mt-4 pt-3 border-top border-secondary">
+                    <label class="small text-dim fw-bold mb-2 uppercase">Rename Department</label>
+                    <div class="input-group">
+                        <input type="text" id="deptNameInput" class="form-control form-input-dark" placeholder="New name...">
+                        <button type="button" class="btn btn-cyan fw-bold" id="renameDeptBtn" style="background: var(--accent-cyan); color: #0b1228; border: none; border-radius: 0 10px 10px 0;">
+                            Rename
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-4">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@section('scripts')
+<script>
+    // Show notification if there's a success message
+    @if(session('success'))
+        document.addEventListener('DOMContentLoaded', function() {
+            showNotification('{{ session('success') }}', 'success');
+        });
+    @endif
+
+    function loadDepartmentData(deptName) {
+        document.getElementById('deptName').textContent = deptName;
+        document.getElementById('deptNameInput').value = deptName;
+        
+        // Fetch offices in this department
+        fetch(`/api/departments/${encodeURIComponent(deptName)}/offices`)
+            .then(r => r.json())
+            .then(offices => {
+                const html = offices.length > 0 
+                    ? offices.map(o => `
+                        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${o.name}</strong>
+                                <br><small class="text-dim">${o.head || 'No head assigned'}</small>
+                            </div>
+                            <span class="badge ${o.status === 'active' ? 'bg-success' : 'bg-secondary'}">${o.status}</span>
+                        </div>
+                    `).join('')
+                    : '<p class="text-center text-dim py-3">No offices in this department</p>';
+                
+                document.getElementById('deptOfficesList').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('deptOfficesList').innerHTML = '<p class="text-center text-danger">Error loading offices</p>';
+            });
+        
+        // Fetch users in this department
+        fetch(`/api/departments/${encodeURIComponent(deptName)}/users`)
+            .then(r => r.json())
+            .then(users => {
+                const html = users.length > 0 
+                    ? users.map(u => `
+                        <div style="padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${u.name}</strong>
+                                <br><small class="text-dim">${u.email}</small>
+                            </div>
+                            <span class="badge bg-info">${u.role}</span>
+                        </div>
+                    `).join('')
+                    : '<p class="text-center text-dim py-3">No users in this department yet</p>';
+                
+                document.getElementById('deptUsersList').innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById('deptUsersList').innerHTML = '<p class="text-center text-dim">No users in this department</p>';
+            });
+    }
+
+    document.getElementById('renameDeptBtn').addEventListener('click', function() {
+        const oldName = document.getElementById('deptName').textContent;
+        const newName = document.getElementById('deptNameInput').value;
+        
+        if (!newName.trim()) {
+            showNotification('Please enter a new department name', 'error');
+            return;
+        }
+        
+        fetch('/api/departments/rename', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ old_name: oldName, new_name: newName })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Department renamed successfully!', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification(data.message || 'Error renaming department', 'error');
+            }
+        });
+    });
+
+    function editOffice(id, name, dept, head, status) {
+        document.getElementById('editOfficeName').value = name;
+        document.getElementById('editOfficeDept').value = dept;
+        document.getElementById('editOfficeHead').value = head || '';
+        document.getElementById('editOfficeStatus').value = status;
+        
+        const form = document.getElementById('editOfficeForm');
+        form.action = `/offices/${id}`;
+        
+        document.getElementById('deleteOfficeBtn').onclick = function() {
+            if(confirm('Are you sure you want to delete this office?')) {
+                const deleteForm = document.createElement('form');
+                deleteForm.method = 'POST';
+                deleteForm.action = `/offices/${id}`;
+                deleteForm.innerHTML = '@csrf @method("DELETE")';
+                document.body.appendChild(deleteForm);
+                deleteForm.submit();
+            }
+        };
+    }
+</script>
 @endsection

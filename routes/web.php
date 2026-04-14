@@ -47,6 +47,7 @@ Route::middleware([\App\Http\Middleware\EnsureAuthenticated::class])->group(func
 
     // --- Core Admin Dashboard ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/api/notifications', [DashboardController::class, 'notifications'])->name('api.notifications');
 
     // --- Resource Management (Users & Offices) ---
     Route::resource('users', UserController::class);

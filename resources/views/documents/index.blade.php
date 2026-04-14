@@ -4,15 +4,103 @@
 
 @section('content')
 <style>
-    .doc-card { background: #1c2536; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; transition: 0.3s; }
+    .doc-card { position: relative; overflow: hidden; background: #1c2536; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; transition: 0.3s; }
+    .doc-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 24%),
+                    linear-gradient(180deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.92));
+        pointer-events: none;
+        opacity: 0.45;
+        z-index: 0;
+    }
     .doc-card:hover { transform: translateY(-5px); border-color: #22d3ee; }
     .doc-card.overdue { border-color: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3); }
-    .file-icon { width: 45px; height: 45px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; display: grid; place-items: center; font-weight: 800; font-size: 0.75rem; color: #94a3b8; }
+    .doc-card > * { position: relative; z-index: 1; }
+    .doc-card h6 { text-shadow: 0 2px 20px rgba(0, 0, 0, 0.35); margin: 0; }
+    .doc-card-header { display: flex; align-items: flex-start; gap: 16px; }
+    .doc-card-header > div { min-width: 0; }
+    .doc-card-header .file-icon { flex-shrink: 0; }
+    .file-icon { width: auto; min-width: 45px; max-width: 110px; height: 45px; background: rgba(255, 255, 255, 0.08); border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.7rem; line-height: 1.1; color: #94a3b8; z-index: 1; padding: 0 8px; white-space: normal; word-break: break-word; text-align: center; }
     .priority-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
     .priority-High { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
     .priority-Med { background: #f59e0b; }
     .priority-Low { background: #38bdf8; }
     .upload-zone { border: 2px dashed rgba(148, 163, 184, 0.2); border-radius: 16px; padding: 30px; cursor: pointer; }
+    .track-steps {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+    }
+    .track-step {
+        position: relative;
+        flex: 1;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 20px;
+        padding: 1rem 0.9rem 0.8rem;
+        text-align: center;
+        transition: all 0.25s ease;
+        min-width: 0;
+    }
+    .track-step::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -0.65rem;
+        width: 1.3rem;
+        height: 2px;
+        background: rgba(56, 189, 248, 0.35);
+        transform: translateY(-50%);
+        z-index: 0;
+    }
+    .track-step:last-child::after {
+        display: none;
+    }
+    .track-step-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin: 0 auto 0.85rem;
+        display: grid;
+        place-items: center;
+        background: rgba(71, 85, 105, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        color: #cbd5e1;
+        font-size: 1.1rem;
+        z-index: 1;
+    }
+    .track-step.active {
+        background: rgba(14, 165, 233, 0.15);
+        border-color: rgba(14, 165, 233, 0.5);
+        box-shadow: 0 0 20px rgba(14, 165, 233, 0.18);
+    }
+    .track-step.active .track-step-icon {
+        background: #0ea5e9;
+        border-color: #0ea5e9;
+        box-shadow: 0 0 22px rgba(14, 165, 233, 0.28);
+        color: white;
+    }
+    .track-step-title {
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #94a3b8;
+        margin-bottom: 0.35rem;
+    }
+    .track-step-name {
+        color: #ffffff;
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+    .track-step-desc {
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
 
     /* --- FIX FOR BIG PAGINATION BUTTONS --- */
     .pagination nav svg {
@@ -57,7 +145,7 @@
             <div class="col-12 col-md-6 col-lg-4">
                 <div class="doc-card p-4 h-100 {{ $doc->due_date && $doc->due_date->isPast() ? 'overdue' : '' }}">
                     <div class="d-flex justify-content-between align-items-start mb-4">
-                        <div class="d-flex align-items-center gap-3">
+                        <div class="doc-card-header">
                             <div class="file-icon text-uppercase">{{ $doc->type ?? 'FILE' }}</div>
                             <div>
                                 <h6 class="mb-0 fw-bold">{{ $doc->title }}</h6>
@@ -79,7 +167,16 @@
                             <span class="small fw-bold" style="color: #22c1ff;">{{ $doc->qr_id }}</span>
                         </div>
                     @endif
-                    @if($doc->receiverUser)
+                    @if($doc->receiverUsers && $doc->receiverUsers->isNotEmpty())
+                        <div class="mb-4">
+                            <small class="text-secondary d-block mb-1">Receivers</small>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach($doc->receiverUsers as $receiver)
+                                    <span class="badge bg-info text-dark">{{ $receiver->name }}</span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif($doc->receiverUser)
                         <div class="mb-4">
                             <small class="text-secondary d-block mb-1">Receiver</small>
                             <span class="small fw-bold">{{ $doc->receiverUser->name }}</span>
@@ -96,7 +193,15 @@
                     @endif
                     <div class="d-flex gap-2 flex-wrap">
                         <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="btn btn-outline-info flex-grow-1 border-0" style="background: rgba(34, 211, 238, 0.05); padding: 8px 12px; font-size: 0.85rem;">View</a>
-                        <button class="btn btn-outline-warning flex-grow-1 border-0" style="background: rgba(255, 193, 7, 0.05);" data-bs-toggle="modal" data-bs-target="#routeModal" onclick="setDocId({{ $doc->id }})">Route</button>
+                        <button type="button" class="btn btn-outline-warning flex-grow-1 border-0" style="background: rgba(255, 193, 7, 0.05); padding: 8px 12px; font-size: 0.85rem;" 
+                            data-title="{{ addslashes($doc->title) }}"
+                            data-origin="{{ addslashes(optional($doc->originOffice)->name ?? 'Unknown') }}"
+                            data-current="{{ addslashes(optional($doc->currentOffice)->name ?? 'In Transit') }}"
+                            data-destination="{{ addslashes(optional($doc->destinationOffice)->name ?? 'Unknown') }}"
+                            data-status="{{ addslashes($doc->status) }}"
+                            onclick="openTrackingModal(this)">
+                            Route
+                        </button>
                         @if($doc->qr_code)
                         <button class="btn btn-outline-secondary flex-grow-1 border-0" style="background: rgba(255, 255, 255, 0.05); padding: 8px 12px; font-size: 0.85rem;" onclick="showQR('{{ asset('storage/' . $doc->qr_code) }}')">QR</button>
                         @endif
@@ -159,12 +264,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-bold text-secondary">Receiver User</label>
-                        <select name="receiver_user_id" class="form-select bg-dark border-secondary text-white" required>
+                        <label class="form-label small fw-bold text-secondary">Receiver Users</label>
+                        <div class="p-3 bg-dark border-secondary rounded" style="max-height: 180px; overflow-y: auto;">
                             @foreach($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</option>
+                                <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
+                                    <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
+                                    <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($loop->first) required @endif>
+                                </label>
                             @endforeach
-                        </select>
+                        </div>
+                        <small class="text-muted">Check all users who should receive this document.</small>
                     </div>
 
                     <label class="form-label small fw-bold text-secondary">Set Priority</label>
@@ -207,6 +316,39 @@
     function showQR(src) {
         document.getElementById('qrImage').src = src;
         new bootstrap.Modal(document.getElementById('qrModal')).show();
+    }
+
+    function openTrackingModal(button) {
+        const title = button.dataset.title || 'Document';
+        const origin = button.dataset.origin || 'Unknown';
+        const current = button.dataset.current || 'In Transit';
+        const destination = button.dataset.destination || 'Unknown';
+        const status = button.dataset.status || 'Unknown';
+
+        document.getElementById('trackModalTitle').textContent = title;
+        document.getElementById('trackModalStatus').textContent = status;
+        document.getElementById('trackOriginText').textContent = origin;
+        document.getElementById('trackCurrentText').textContent = current;
+        document.getElementById('trackDestinationText').textContent = destination;
+
+        const originBox = document.getElementById('trackOriginBox');
+        const currentBox = document.getElementById('trackCurrentBox');
+        const destinationBox = document.getElementById('trackDestinationBox');
+
+        const statusKey = status.toLowerCase().replace(/\s+/g, '_');
+        const isAtOrigin = current === origin && origin !== 'Unknown';
+        const isAtDestination = current === destination && destination !== 'Unknown';
+        const isInTransitStatus = statusKey === 'in_transit';
+
+        const originActive = isAtOrigin && !isInTransitStatus;
+        const destinationActive = isAtDestination && !isInTransitStatus;
+        const currentActive = isInTransitStatus || current === 'In Transit' || (!isAtOrigin && !isAtDestination);
+
+        originBox.classList.toggle('active', originActive);
+        currentBox.classList.toggle('active', currentActive);
+        destinationBox.classList.toggle('active', destinationActive);
+
+        new bootstrap.Modal(document.getElementById('trackModal')).show();
     }
 
     const selectedRecipients = new Map();
@@ -440,6 +582,46 @@
             </div>
             <div class="modal-body text-center">
                 <img id="qrImage" src="" alt="QR Code" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="trackModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+            <div class="modal-header border-0">
+                <div>
+                    <h5 class="modal-title" id="trackModalTitle">Document Route</h5>
+                    <p class="text-muted mb-0" id="trackModalStatus"></p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="track-steps">
+                    <div class="track-step" id="trackOriginBox">
+                        <div class="track-step-icon">📤</div>
+                        <div class="track-step-title">Origin</div>
+                        <div id="trackOriginText" class="track-step-name"></div>
+                        <div class="track-step-desc">Starting office</div>
+                    </div>
+                    <div class="track-step" id="trackCurrentBox">
+                        <div class="track-step-icon">📍</div>
+                        <div class="track-step-title">Current</div>
+                        <div id="trackCurrentText" class="track-step-name"></div>
+                        <div class="track-step-desc">Where the document is now</div>
+                    </div>
+                    <div class="track-step" id="trackDestinationBox">
+                        <div class="track-step-icon">📥</div>
+                        <div class="track-step-title">Destination</div>
+                        <div id="trackDestinationText" class="track-step-name"></div>
+                        <div class="track-step-desc">Final target office</div>
+                    </div>
+                </div>
+                <p class="text-secondary small">This popup shows the current route position for the selected document. Only the active step is highlighted.</p>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

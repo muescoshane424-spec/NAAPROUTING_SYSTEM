@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Department;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\{Hash, Auth, Storage};
 
 class UserController extends Controller
@@ -30,10 +31,27 @@ class UserController extends Controller
                     ->orWhere('email', $input)
                     ->first();
 
-        if ($user && Hash::check($password, $user->password)) {
+        $validPassword = false;
+        $passwordNeedsRehash = false;
+
+        if ($user) {
+            try {
+                $validPassword = Hash::check($password, $user->password);
+                $passwordNeedsRehash = Hash::needsRehash($user->password);
+            } catch (\RuntimeException $e) {
+                // Legacy passwords may be stored as plain text or unsupported hash formats.
+                $validPassword = $user->password === $password;
+            }
+        }
+
+        if ($validPassword) {
+            if ($passwordNeedsRehash || $user->password === $password) {
+                $user->password = $password;
+                $user->save();
+            }
+
             // Check if 2FA is enabled
             if ($user->two_factor_confirmed_at) {
-                // Store user id in session for 2FA verification
                 session(['temp_user_id' => $user->id, 'temp_authenticated' => true]);
                 return redirect()->route('2fa.verify')->with('info', 'Please enter your 2FA code.');
             }
@@ -194,12 +212,12 @@ class UserController extends Controller
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
             'email'         => 'required|string|email|max:255|unique:users',
-            'password'      => 'required|string|min:12|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]+$/',
+            'password'      => 'required|string|min:12|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])[a-zA-Z0-9!@#$%^&*()\-_+=\[\]{}:;<>,.?]+$/',
             'role'          => 'required|in:ADMIN,USER',
             'department_id' => 'required|exists:departments,id',
         ], [
             'password.min' => 'Password must be at least 12 characters long.',
-            'password.regex' => 'Password must contain uppercase, lowercase, numbers, and special characters.',
+            'password.regex' => 'Password must contain uppercase, lowercase, numbers, and a special character.',
             'role.in' => 'Role must be either ADMIN or USER.',
         ]);
 
@@ -209,6 +227,14 @@ class UserController extends Controller
             'role'          => $validated['role'],
             'department_id' => $validated['department_id'],
             'password'      => Hash::make($validated['password']),
+        ]);
+
+        ActivityLog::create([
+            'user' => session('user_name') ?? 'Admin User',
+            'action' => 'New user created: ' . $validated['name'],
+            'document_id' => null,
+            'ip' => $request->ip(),
+            'meta' => json_encode(['email' => $validated['email'], 'role' => $validated['role']]),
         ]);
 
         return redirect()->route('users.index')->with('success', 'User account created successfully!');
@@ -225,12 +251,12 @@ class UserController extends Controller
         $validated = $request->validate([
             'name'          => 'required|string|max:255',
             'email'         => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'password'      => 'nullable|string|min:12|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]+$/',
+            'password'      => 'nullable|string|min:12|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9])[a-zA-Z0-9!@#$%^&*()\-_+=\[\]{}:;<>,.?]+$/',
             'role'          => 'required|in:ADMIN,USER',
             'department_id' => 'required|exists:departments,id',
         ], [
             'password.min' => 'Password must be at least 12 characters long.',
-            'password.regex' => 'Password must contain uppercase, lowercase, numbers, and special characters.',
+            'password.regex' => 'Password must contain uppercase, lowercase, numbers, and a special character.',
             'role.in' => 'Role must be either ADMIN or USER.',
         ]);
 

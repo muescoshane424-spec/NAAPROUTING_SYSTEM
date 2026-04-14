@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Hash;
 use App\Models\Department;
 
 class User extends Authenticatable
@@ -25,6 +26,17 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_recovery_codes',
     ];
+
+    public function setPasswordAttribute($value)
+    {
+        if ($value === null) {
+            return;
+        }
+
+        $this->attributes['password'] = Hash::needsRehash($value)
+            ? Hash::make($value)
+            : $value;
+    }
 
     protected static function boot()
     {

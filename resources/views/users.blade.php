@@ -226,7 +226,6 @@
                             <option value="" disabled {{ old('role') ? '' : 'selected' }}>Select role</option>
                             <option value="ADMIN" {{ old('role') === 'ADMIN' ? 'selected' : '' }}>ADMIN</option>
                             <option value="USER" {{ old('role') === 'USER' ? 'selected' : '' }}>USER</option>
-                            <option value="HEAD" {{ old('role') === 'HEAD' ? 'selected' : '' }}>HEAD</option>
                         </select>
                         @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
@@ -244,8 +243,12 @@
 
                     <div class="mb-4">
                         <label class="form-label">Password</label>
-                        <input type="password" name="password" id="userPassInput" class="form-control form-control-custom" placeholder="••••••••">
-                        <small class="text-muted mt-1 d-none" id="passHint">Leave blank to keep current</small>
+                        <input type="password" name="password" id="userPassInput" class="form-control form-control-custom @error('password') is-invalid @enderror" placeholder="••••••••••••" required>
+                        <small class="text-muted mt-1" id="passHint" style="display: block;">
+                            Min 12 chars • Uppercase • Lowercase • Number • Any special char (!@#$%^&* etc)
+                        </small>
+                        <small class="text-muted mt-1 d-none" id="passHintEdit">Leave blank to keep current</small>
+                        @error('password') <div class="invalid-feedback" style="display: block;">{{ $message }}</div> @enderror
                     </div>
 
                     <button type="submit" class="btn btn-theme-cyan w-100 fw-bold py-2 rounded-3" id="submitBtn">
@@ -292,6 +295,8 @@
         document.getElementById('userRoleInput').value = user.role || 'USER';
         document.getElementById('userDepartmentInput').value = user.department_id || '';
         document.getElementById('userPassInput').required = false;
+        document.getElementById('passHint').classList.add('d-none');
+        document.getElementById('passHintEdit').classList.remove('d-none');
         document.getElementById('userNameInput').focus();
     };
 
@@ -305,7 +310,8 @@
         document.getElementById('submitBtn').classList.replace('btn-theme-purple', 'btn-theme-cyan');
         
         document.getElementById('cancelBtn').classList.add('d-none');
-        document.getElementById('passHint').classList.add('d-none');
+        document.getElementById('passHint').classList.remove('d-none');
+        document.getElementById('passHintEdit').classList.add('d-none');
         
         form.action = "{{ route('users.store') }}";
         methodField.innerHTML = '';

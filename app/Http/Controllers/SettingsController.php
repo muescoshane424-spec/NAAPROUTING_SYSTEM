@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\ActivityLog;
 
 class SettingsController extends Controller
 {
@@ -37,6 +38,14 @@ class SettingsController extends Controller
                 ['value' => $value, 'updated_at' => now()]
             );
         }
+
+        ActivityLog::create([
+            'user' => session('user_name') ?? 'Admin User',
+            'action' => 'System settings updated',
+            'document_id' => null,
+            'ip' => $request->ip(),
+            'meta' => json_encode($request->only($settingKeys)),
+        ]);
 
         return back()->with('success', 'System settings updated successfully!');
     }

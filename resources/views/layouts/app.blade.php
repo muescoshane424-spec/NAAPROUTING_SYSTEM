@@ -84,6 +84,31 @@
             font-weight: 600;
         }
 
+        /* HIGH CONTRAST TEXT RULES */
+        body, body * {
+            color: #eef2ff !important;
+        }
+
+        .text-secondary, .text-muted, .small, .form-label, label, .form-check-label, .dropdown-item, .page-subtitle, .card-subtitle, .activity-badge, .badge {
+            color: rgba(226, 232, 240, 0.88) !important;
+        }
+
+        .form-control, .form-select, .form-check-input, textarea, select, input {
+            color: #f8fafc !important;
+        }
+
+        a, .nav-link, .dropdown-item, .btn-link {
+            color: #dbeafe !important;
+        }
+
+        .dropdown-menu, .modal-content, .card, .table, .table th, .table td {
+            color: #eef2ff !important;
+        }
+
+        .text-info, .text-white, .text-primary, .text-success, .text-warning, .text-danger {
+            color: inherit !important;
+        }
+
         /* PAGINATION STYLING */
         .pagination {
             justify-content: center;
@@ -265,14 +290,12 @@
             <div class="dropdown">
                 <div class="notif-btn position-relative" id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-bell"></i>
-                    <span class="notif-badge">3</span>
+                    <span class="notif-badge" id="notifBadge">0</span>
                 </div>
-                <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary shadow mt-2" aria-labelledby="notifDropdown" style="width: 280px;">
+                <ul class="dropdown-menu dropdown-menu-end bg-dark border-secondary shadow mt-2" aria-labelledby="notifDropdown" style="width: 320px;" id="notifMenu">
                     <li class="dropdown-header text-info fw-bold">Notifications</li>
                     <li><hr class="dropdown-divider border-secondary"></li>
-                    <li><a class="dropdown-item text-white small" href="#">New document assigned</a></li>
-                    <li><a class="dropdown-item text-white small" href="#">System update complete</a></li>
-                    <li><a class="dropdown-item text-white small" href="#">User login detected</a></li>
+                    <li><a class="dropdown-item text-white small" href="#" id="notifPlaceholder">Loading latest activity...</a></li>
                 </ul>
             </div>
         </header>
@@ -318,6 +341,7 @@
                 root.style.setProperty('--sidebar-bg', '#e2e8f0');
                 root.style.setProperty('--accent-cyan', '#0891b2');
                 root.style.setProperty('--accent-purple', '#7c3aed');
+
                 root.style.setProperty('--text-dim', '#475569');
                 root.style.setProperty('--panel', 'rgba(226, 232, 240, 0.8)');
                 root.style.setProperty('--panel-border', 'rgba(15, 23, 42, 0.1)');
@@ -375,6 +399,59 @@
                 container.firstElementChild?.remove();
             }, 3000);
         };
+
+        async function loadNotifications() {
+            const menu = document.getElementById('notifMenu');
+            const badge = document.getElementById('notifBadge');
+
+            if (!menu || !badge) {
+                return;
+            }
+
+            try {
+                const response = await fetch('{{ route('api.notifications') }}', {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load notifications');
+                }
+
+                const data = await response.json();
+                const items = data.items || [];
+                const count = data.count || 0;
+
+                badge.textContent = count;
+                badge.style.display = count ? 'inline-flex' : 'none';
+
+                let html = `
+                    <li class="dropdown-header text-info fw-bold">Notifications</li>
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                `;
+
+                if (items.length === 0) {
+                    html += `<li><a class="dropdown-item text-white small" href="#">No recent updates</a></li>`;
+                } else {
+                    items.forEach((item) => {
+                        html += `
+                            <li>
+                                <a class="dropdown-item text-white small" href="#">
+                                    <strong>${item.message}</strong><br>
+                                    <span class="text-secondary" style="font-size: 0.8rem;">${item.time}</span>
+                                </a>
+                            </li>
+                        `;
+                    });
+                }
+
+                menu.innerHTML = html;
+            } catch (error) {
+                console.error('Notification update failed:', error);
+            }
+        }
+
+        loadNotifications();
+        setInterval(loadNotifications, 15000);
     </script>
 </body>
 </html>

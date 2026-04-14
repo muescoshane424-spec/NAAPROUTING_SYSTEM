@@ -56,7 +56,7 @@
 
         <div class="info-box">
             <strong style="color: #00f0ff;">🔒 Password Requirements:</strong><br>
-            • Minimum 12 characters • Uppercase, lowercase, numbers & symbols<br>
+            • Minimum 12 characters • Uppercase, lowercase, numbers & special chars<br>
             • 2FA enabled for maximum security
         </div>
 

@@ -83,6 +83,11 @@ class Document extends Model
         return $this->belongsTo(User::class, 'receiver_user_id');
     }
 
+    public function receiverUsers()
+    {
+        return $this->belongsToMany(User::class, 'document_routings', 'document_id', 'receiver_user_id')->distinct();
+    }
+
     /**
      * Relationship: History of movements/actions for this document.
      */

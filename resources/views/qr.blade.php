@@ -47,6 +47,33 @@
         border: 2px dashed rgba(255,255,255,0.1); border-radius: 20px;
         min-height: 300px; display: grid; place-items: center; background: rgba(0,0,0,0.2); overflow: hidden;
     }
+    #scanner-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.85rem;
+        width: 100%;
+        padding: 1rem;
+        text-align: center;
+    }
+    #scanner-placeholder .scanner-icon {
+        width: 96px;
+        height: 96px;
+        min-width: 96px;
+        min-height: 96px;
+        display: grid;
+        place-items: center;
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 50%;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    #scanner-placeholder p {
+        color: rgba(226, 232, 240, 0.88);
+        margin: 0;
+        line-height: 1.5;
+        font-size: 0.95rem;
+    }
 </style>
 @endsection
 
@@ -98,10 +125,10 @@
                 <h5 class="mb-4">QR Scanner</h5>
                 <div id="reader" class="qr-preview-box">
                     <div id="scanner-placeholder">
-                        <div class="bg-dark rounded-circle d-inline-block p-3 mb-3 border border-secondary">
-                            <span style="font-size: 2rem;">📷</span>
+                        <div class="scanner-icon">
+                            <span style="font-size: 2.25rem;">📷</span>
                         </div>
-                        <p class="text-muted small">Scan document QR code to view</p>
+                        <p>Scan document QR code to view</p>
                     </div>
                 </div>
                 <button type="button" id="start-scan" class="btn w-100 mt-3 p-3 fw-bold text-dark" style="background: #e2e8f0; border-radius: 12px;">

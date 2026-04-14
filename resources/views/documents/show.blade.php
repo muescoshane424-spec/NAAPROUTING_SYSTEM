@@ -16,6 +16,11 @@
     .tracking-office {
         text-align: center;
         flex: 1;
+        opacity: 0.65;
+        transition: opacity 0.2s ease;
+    }
+    .tracking-office.active {
+        opacity: 1;
     }
     .tracking-office-circle {
         width: 50px;
@@ -26,12 +31,24 @@
         justify-content: center;
         margin: 0 auto 10px;
         font-weight: bold;
-        color: white;
+        color: #ffffff;
+        background: rgba(148, 163, 184, 0.16);
+        border: 2px solid rgba(148, 163, 184, 0.25);
+        transition: all 0.2s ease;
+    }
+    .tracking-office.active .tracking-office-circle {
+        background: #22d3ee;
+        border-color: #22d3ee;
+        box-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
     }
     .tracking-office-name {
         font-size: 0.9rem;
         margin-bottom: 5px;
-        color: white;
+        color: #cbd5e1;
+        transition: color 0.2s ease;
+    }
+    .tracking-office.active .tracking-office-name {
+        color: #ffffff;
     }
     .tracking-office-type {
         font-size: 0.75rem;
@@ -40,11 +57,8 @@
     .tracking-arrow {
         flex: 0.5;
         text-align: center;
-        color: #22d3ee;
+        color: rgba(34, 211, 238, 0.7);
         font-size: 24px;
-    }
-    .current {
-        border: 3px solid #22d3ee;
     }
     .sla-card {
         background: linear-gradient(135deg, rgba(34, 211, 238, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
@@ -71,6 +85,16 @@
 @endsection
 
 @section('content')
+@php
+    $originId = optional($document->originOffice)->id;
+    $destinationId = optional($document->destinationOffice)->id;
+    $currentId = optional($document->currentOffice)->id;
+    $statusKey = strtolower(str_replace(' ', '_', $document->status ?? ''));
+    $originActive = $currentId && $currentId === $originId && $statusKey !== 'in_transit';
+    $destinationActive = $currentId && $currentId === $destinationId && $statusKey !== 'in_transit';
+    $currentActive = !$originActive && !$destinationActive;
+    $currentLabel = $document->currentOffice?->name ?? 'In Transit';
+@endphp
 <div class="container-fluid p-4">
     <div class="card bg-dark text-white border-secondary shadow" style="border-radius: 16px;">
         <div class="card-header border-secondary d-flex justify-content-between align-items-center" style="border-radius: 16px 16px 0 0;">
@@ -121,8 +145,8 @@
             <h6 class="fw-bold mb-3">📍 Document Route</h6>
             <div class="tracking-map">
                 <!-- Origin Office -->
-                <div class="tracking-office">
-                    <div class="tracking-office-circle" style="background: #22d3ee;">
+                <div class="tracking-office {{ $originActive ? 'active' : '' }}">
+                    <div class="tracking-office-circle">
                         📤
                     </div>
                     <div class="tracking-office-name">{{ $document->originOffice->name ?? 'N/A' }}</div>
@@ -133,11 +157,11 @@
                 <div class="tracking-arrow">→</div>
 
                 <!-- Current Office -->
-                <div class="tracking-office">
-                    <div class="tracking-office-circle current" style="background: #a855f7;">
+                <div class="tracking-office {{ $currentActive ? 'active' : '' }}">
+                    <div class="tracking-office-circle">
                         📍
                     </div>
-                    <div class="tracking-office-name">{{ $document->currentOffice->name ?? 'In Transit' }}</div>
+                    <div class="tracking-office-name">{{ $currentLabel }}</div>
                     <div class="tracking-office-type">Current</div>
                 </div>
 
@@ -145,8 +169,8 @@
                 <div class="tracking-arrow">→</div>
 
                 <!-- Destination Office -->
-                <div class="tracking-office">
-                    <div class="tracking-office-circle" style="background: #10b981;">
+                <div class="tracking-office {{ $destinationActive ? 'active' : '' }}">
+                    <div class="tracking-office-circle">
                         📥
                     </div>
                     <div class="tracking-office-name">{{ $document->destinationOffice->name ?? 'N/A' }}</div>
@@ -159,8 +183,19 @@
             <div class="row mb-4">
                 <div class="col-md-3">
                     <small class="text-muted d-block">📌 Receiver</small>
-                    <strong>{{ optional($document->receiverUser)->name ?? 'Unassigned' }}</strong>
-                    <div class="small text-muted">{{ optional(optional($document->receiverUser)->department)->name ?? 'No department' }}</div>
+                    @if($document->receiverUsers && $document->receiverUsers->isNotEmpty())
+                        <div class="d-flex flex-column gap-1">
+                            @foreach($document->receiverUsers as $receiver)
+                                <div>
+                                    <strong>{{ $receiver->name }}</strong>
+                                    <div class="small text-muted">{{ optional($receiver->department)->name ?? 'No department' }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <strong>{{ optional($document->receiverUser)->name ?? 'Unassigned' }}</strong>
+                        <div class="small text-muted">{{ optional(optional($document->receiverUser)->department)->name ?? 'No department' }}</div>
+                    @endif
                 </div>
                 <div class="col-md-3">
                     <small class="text-muted d-block">📄 Document Type</small>

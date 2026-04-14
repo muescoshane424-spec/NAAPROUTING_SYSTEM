@@ -65,4 +65,26 @@ class DashboardController extends Controller
 
         return view('dashboard', compact('stats', 'flowData', 'days', 'offices', 'recentLogs', 'recentDocs', 'departmentName', 'isAdmin', 'totalDocuments'));
     }
+
+    public function notifications(Request $request)
+    {
+        $isAdmin = session('user_role') === 'ADMIN';
+
+        $notifications = ActivityLog::latest()
+            ->when(!$isAdmin, fn($query) => $query->where('user', session('user_name')))
+            ->take(10)
+            ->get()
+            ->map(fn($log) => [
+                'title' => $log->action,
+                'time' => $log->created_at->diffForHumans(),
+                'details' => $log->meta ? json_decode($log->meta, true) : null,
+            ]);
+
+        $unreadCount = $notifications->count();
+
+        return response()->json([
+            'count' => $unreadCount,
+            'items' => $notifications,
+        ]);
+    }
 }

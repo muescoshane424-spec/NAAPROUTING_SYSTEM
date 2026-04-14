@@ -82,13 +82,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label text-white">Receiver User *</label>
-                        <select name="receiver_user_id" class="form-control" required>
-                            <option value="" disabled selected>Select receiver</option>
+                        <label class="form-label text-white">Receiver Users *</label>
+                        <div class="p-3 bg-dark border-secondary rounded" style="max-height: 180px; overflow-y: auto;">
                             @foreach($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} @if($user->department)({{ $user->department->name }})@endif</option>
+                                <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
+                                    <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
+                                    <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($loop->first) required @endif>
+                                </label>
                             @endforeach
-                        </select>
+                        </div>
+                        <small class="text-secondary">Check all users who should receive this document.</small>
                     </div>
 
                     <button class="btn btn-primary w-100 mt-3">Route Document</button>

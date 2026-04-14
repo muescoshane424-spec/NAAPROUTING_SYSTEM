@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use App\Models\Office;
 use App\Models\ActivityLog;
+use App\Models\DocumentRouting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,7 +22,7 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Document::with(['currentOffice', 'originOffice', 'destinationOffice', 'receiverUser.department'])->latest();
+        $query = Document::with(['currentOffice', 'originOffice', 'destinationOffice', 'receiverUser.department', 'receiverUsers.department'])->latest();
 
         if (session('user_role') !== 'ADMIN') {
             $query->where('uploaded_by', session('user_id'));
@@ -45,7 +46,9 @@ class DocumentController extends Controller
             'sla' => 'required|in:Standard,Expedited,Critical',
             'origin_office_id' => 'required|exists:offices,id',
             'destination_office_id' => 'required|exists:offices,id',
-            'receiver_user_id' => 'required|exists:users,id',
+            'receiver_user_ids' => 'required_without:receiver_user_id|array',
+            'receiver_user_ids.*' => 'exists:users,id',
+            'receiver_user_id' => 'required_without:receiver_user_ids|exists:users,id',
             'file' => 'required|file|max:5120' // 5MB Limit
         ]);
 
@@ -69,6 +72,12 @@ class DocumentController extends Controller
                 $qrId = 'QR-' . strtoupper(uniqid('DOC-', true));
 
                 // 4. Build document payload safely
+                $receiverUserIds = collect($request->input('receiver_user_ids', []))->filter()->map(fn($id) => (int)$id)->unique()->values()->all();
+                if ($request->filled('receiver_user_id')) {
+                    array_unshift($receiverUserIds, (int) $request->receiver_user_id);
+                    $receiverUserIds = array_values(array_unique($receiverUserIds));
+                }
+
                 $documentData = [
                     'title' => $request->title,
                     'description' => $request->description ?? 'No description provided',
@@ -77,7 +86,7 @@ class DocumentController extends Controller
                     'origin_office_id' => $request->origin_office_id,
                     'current_office_id' => $request->origin_office_id,
                     'destination_office_id' => $request->destination_office_id,
-                    'receiver_user_id' => $request->receiver_user_id,
+                    'receiver_user_id' => $receiverUserIds[0] ?? null,
                     'file_path' => $path,
                     'status' => 'Pending',
                     'uploaded_by' => session('user_id') ?? 1,
@@ -118,6 +127,19 @@ class DocumentController extends Controller
                     $document->update(['routing_history' => $routingHistory]);
                 }
 
+                if (!empty($receiverUserIds)) {
+                    foreach ($receiverUserIds as $receiverId) {
+                        DocumentRouting::create([
+                            'document_id' => $document->id,
+                            'from_office_id' => $request->origin_office_id,
+                            'to_office_id' => $request->destination_office_id,
+                            'receiver_user_id' => $receiverId,
+                            'status' => 'Pending',
+                            'notes' => 'Initial upload receiver',
+                        ]);
+                    }
+                }
+
                 // 5. Log Activity for the Activity Tab
                 ActivityLog::create([
                     'user' => session('user_name') ?? 'Admin User',
@@ -127,9 +149,18 @@ class DocumentController extends Controller
                     'meta' => json_encode(['filename' => $file->getClientOriginalName()])
                 ]);
 
-                // 6. Send notification to receiver
+                // 6. Send notifications to selected receivers
                 try {
-                    $document->notifyReceiver();
+                    if (!empty($receiverUserIds)) {
+                        foreach ($receiverUserIds as $receiverId) {
+                            $receiver = User::find($receiverId);
+                            if ($receiver) {
+                                $receiver->notify(new \App\Notifications\DocumentRoutedNotification($document));
+                            }
+                        }
+                    } else {
+                        $document->notifyReceiver();
+                    }
                 } catch (\Exception $e) {
                     \Log::error('Notification failed: ' . $e->getMessage());
                 }
@@ -148,7 +179,7 @@ class DocumentController extends Controller
     public function show($id)
     {
         // Eager load activityLogs and receiver to show the routing history timeline
-        $document = Document::with(['originOffice', 'currentOffice', 'destinationOffice', 'receiverUser.department', 'activityLogs' => function($query) {
+        $document = Document::with(['originOffice', 'currentOffice', 'destinationOffice', 'receiverUser.department', 'receiverUsers.department', 'activityLogs' => function($query) {
             $query->latest();
         }, 'routings.fromOffice', 'routings.toOffice'])->findOrFail($id);
 

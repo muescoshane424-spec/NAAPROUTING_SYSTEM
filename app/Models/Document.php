@@ -135,10 +135,7 @@ class Document extends Model
         };
     }
 
-    /**
-     * Helper: Get a Bootstrap-friendly color based on priority.
-     * Useful for your Blade views.
-     */
+    
     public function getPriorityColorAttribute()
     {
         return match (strtolower($this->priority)) {
@@ -149,17 +146,13 @@ class Document extends Model
         };
     }
 
-    /**
-     * Check if document has been delivered and signed
-     */
+    
     public function isDelivered()
     {
         return $this->status === 'Completed' && $this->receiver_signature !== null;
     }
 
-    /**
-     * Mark document as received with signature
-     */
+    
     public function markAsReceived($signatureData = null)
     {
         $this->update([
@@ -170,10 +163,7 @@ class Document extends Model
         ]);
     }
 
-    /**
-     * Get delivery proof status
-     */
-    public function getDeliveryProofAttribute()
+        public function getDeliveryProofAttribute()
     {
         if (!$this->receiver_signature || !$this->qr_scanned_at) {
             return null;
@@ -186,9 +176,7 @@ class Document extends Model
         ];
     }
 
-    /**
-     * Notify receiver about document
-     */
+    
     public function notifyReceiver()
     {
         if ($this->receiver_user_id) {
@@ -199,9 +187,7 @@ class Document extends Model
         }
     }
 
-    /**
-     * Notify uploader when document is signed
-     */
+   
     public function notifyUploader($signerName = null)
     {
         if ($this->uploaded_by) {

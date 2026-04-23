@@ -76,6 +76,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn($log) => [
                 'title' => $log->action,
+                'message' => $log->action,
                 'time' => $log->created_at->diffForHumans(),
                 'details' => $log->meta ? json_decode($log->meta, true) : null,
             ]);

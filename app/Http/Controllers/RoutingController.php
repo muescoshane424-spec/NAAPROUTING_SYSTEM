@@ -58,8 +58,15 @@ class RoutingController extends Controller
                     'status' => $newStatus
                 ];
 
-                // Set first receiver as primary if multiple provided
-                $receiverUserIds = $request->input('receiver_user_ids', []);
+                // Set first receiver as primary if multiple provided, but never allow self-selection
+                $receiverUserIds = collect($request->input('receiver_user_ids', []))
+                    ->filter()
+                    ->map(fn($id) => (int) $id)
+                    ->reject(fn($id) => $id === (int) session('user_id'))
+                    ->unique()
+                    ->values()
+                    ->all();
+
                 if (!empty($receiverUserIds)) {
                     $updateData['receiver_user_id'] = $receiverUserIds[0];
                 }

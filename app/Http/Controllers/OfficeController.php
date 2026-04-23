@@ -155,6 +155,7 @@ class OfficeController extends Controller
         $users = User::whereHas('department', function($query) use ($office) {
             $query->where('name', $office->department);
         })
+            ->where('id', '!=', session('user_id'))
             ->with('department')
             ->orderBy('name', 'asc')
             ->get()

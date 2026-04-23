@@ -28,6 +28,32 @@
     .priority-Med { background: #f59e0b; }
     .priority-Low { background: #38bdf8; }
     .upload-zone { border: 2px dashed rgba(148, 163, 184, 0.2); border-radius: 16px; padding: 30px; cursor: pointer; }
+    .modal-header { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-right: 4.5rem; }
+    .modal-header .custom-close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        cursor: pointer;
+        transition: background 0.2s ease;
+        z-index: 5;
+    }
+    .modal-header .custom-close-btn:hover {
+        background: rgba(255, 255, 255, 0.16);
+    }
+    .modal-header .custom-close-btn i {
+        font-size: 1.1rem;
+        line-height: 1;
+    }
     .track-steps {
         display: flex;
         gap: 1rem;
@@ -229,7 +255,7 @@
                 @csrf
                 <div class="modal-header border-0 p-4">
                     <h5 class="modal-title fw-bold">Upload Document</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn custom-close-btn" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body p-4 pt-0">
                     <div class="upload-zone text-center mb-4" onclick="document.getElementById('fileHidden').click()">
@@ -266,11 +292,14 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-secondary">Receiver Users</label>
                         <div class="p-3 bg-dark border-secondary rounded" style="max-height: 180px; overflow-y: auto;">
+                            @php $currentUserId = session('user_id'); $firstReceiver = true; @endphp
                             @foreach($users as $user)
-                                <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
-                                    <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
-                                    <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($loop->first) required @endif>
-                                </label>
+                                @if($user->id !== $currentUserId)
+                                    <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
+                                        <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
+                                        <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($firstReceiver) required @php $firstReceiver = false; @endphp @endif>
+                                    </label>
+                                @endif
                             @endforeach
                         </div>
                         <small class="text-muted">Check all users who should receive this document.</small>
@@ -363,10 +392,9 @@
             selectedIds.value = '';
         } else {
             const chips = Array.from(selectedRecipients.values()).map(user => `
-                <div class="badge bg-info text-dark" style="padding: 8px 12px; font-size: 0.85rem;">
-                    ${user.name}
-                    <button type="button" class="btn-close btn-close-white ms-2" 
-                            onclick="removeRecipient(${user.id})" style="height: 12px; width: 12px;"></button>
+                <div class="badge bg-info text-dark d-inline-flex align-items-center" style="padding: 8px 12px; font-size: 0.85rem; gap: 0.5rem;">
+                    <span>${user.name}</span>
+                    <button type="button" class="btn custom-close-btn" onclick="removeRecipient(${user.id})" aria-label="Remove recipient"><i class="bi bi-x-lg"></i></button>
                 </div>
             `).join('');
             container.innerHTML = chips;
@@ -386,6 +414,8 @@
         updateRecipientDisplay();
     }
 
+    const currentUserId = @json(session('user_id'));
+
     async function renderStaffList() {
         const officeSelect = document.getElementById('officeSelect');
         const officeId = officeSelect.value;
@@ -399,15 +429,16 @@
         try {
             const response = await fetch(`/api/offices/${officeId}/staff`);
             const data = await response.json();
+            const staff = (data.staff || []).filter(user => user.id !== currentUserId);
 
-            if (data.staff.length === 0) {
+            if (staff.length === 0) {
                 container.innerHTML = '<div class="text-muted text-center py-4"><small>No staff assigned to this office</small></div>';
                 return;
             }
 
             const html = `
                 <div class="list-group" style="border: none;">
-                    ${data.staff.map(user => {
+                    ${staff.map(user => {
                         const isSelected = selectedRecipients.has(user.id);
                         const isAutoSelected = autoSelectedRecipients.has(user.id);
                         return `
@@ -456,7 +487,7 @@
             const data = await response.json();
             selectedRecipients.clear();
             autoSelectedRecipients.clear();
-            data.staff.forEach(user => {
+            (data.staff || []).filter(user => user.id !== currentUserId).forEach(user => {
                 selectedRecipients.set(user.id, user);
                 autoSelectedRecipients.add(user.id);
             });
@@ -522,7 +553,7 @@
                 @csrf
                 <div class="modal-header border-0 p-4">
                     <h5 class="modal-title fw-bold">📤 Route Document</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn custom-close-btn" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <div class="modal-body p-4 pt-0" style="max-height: 500px; overflow-y: auto;">
                     <input type="hidden" id="docId" name="doc_id">
@@ -578,7 +609,7 @@
         <div class="modal-content bg-dark text-white">
             <div class="modal-header">
                 <h5 class="modal-title">Document QR Code</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn custom-close-btn" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body text-center">
                 <img id="qrImage" src="" alt="QR Code" class="img-fluid">
@@ -595,7 +626,7 @@
                     <h5 class="modal-title" id="trackModalTitle">Document Route</h5>
                     <p class="text-muted mb-0" id="trackModalStatus"></p>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn custom-close-btn" data-bs-dismiss="modal" aria-label="Close"><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="track-steps">

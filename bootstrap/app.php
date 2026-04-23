@@ -11,10 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // 1. Your Ngrok bypass
+        // 1. Registers your Ngrok bypass header
         $middleware->append(\App\Http\Middleware\SkipNgrokWarning::class);
 
-        // 2. Disable CSRF for API routes so Android can POST data
+        // 2. Disables CSRF for API routes so the Android app can send data
         $middleware->validateCsrfTokens(except: [
             'api/*', 
         ]);

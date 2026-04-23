@@ -72,8 +72,16 @@ class DocumentController extends Controller
                 $qrId = 'QR-' . strtoupper(uniqid('DOC-', true));
 
                 // 4. Build document payload safely
-                $receiverUserIds = collect($request->input('receiver_user_ids', []))->filter()->map(fn($id) => (int)$id)->unique()->values()->all();
+                $receiverUserIds = collect($request->input('receiver_user_ids', []))
+                    ->filter()
+                    ->map(fn($id) => (int)$id)
+                    ->reject(fn($id) => $id === (int) session('user_id'))
+                    ->unique()
+                    ->values()
+                    ->all();
+
                 if ($request->filled('receiver_user_id')) {
+                    $receiverUserIds = array_filter($receiverUserIds, fn($id) => $id !== (int) session('user_id'));
                     array_unshift($receiverUserIds, (int) $request->receiver_user_id);
                     $receiverUserIds = array_values(array_unique($receiverUserIds));
                 }

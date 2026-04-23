@@ -84,11 +84,14 @@
                     <div class="mb-3">
                         <label class="form-label text-white">Receiver Users *</label>
                         <div class="p-3 bg-dark border-secondary rounded" style="max-height: 180px; overflow-y: auto;">
+                            @php $currentUserId = session('user_id'); $firstReceiver = true; @endphp
                             @foreach($users as $user)
-                                <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
-                                    <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
-                                    <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($loop->first) required @endif>
-                                </label>
+                                @if($user->id !== $currentUserId)
+                                    <label class="form-check form-check-inline d-flex align-items-center justify-content-between w-100 rounded px-2 py-2 mb-2" style="background: rgba(255,255,255,0.03);">
+                                        <span class="text-white">{{ $user->name }} @if($user->department) ({{ $user->department->name }}) @endif</span>
+                                        <input type="checkbox" name="receiver_user_ids[]" value="{{ $user->id }}" class="form-check-input ms-2" @if($firstReceiver) required @php $firstReceiver = false; @endphp @endif>
+                                    </label>
+                                @endif
                             @endforeach
                         </div>
                         <small class="text-secondary">Check all users who should receive this document.</small>

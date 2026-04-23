@@ -225,13 +225,16 @@
             </button>
         </div>
 
-        @php $isAdmin = session('user_role') === 'ADMIN'; @endphp
+        @php
+            $isAdmin = session('user_role') === 'ADMIN';
+            $documentsLabel = $isAdmin ? 'Documents' : 'My Documents';
+        @endphp
         <nav>
             <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                 <i class="bi bi-grid-fill"></i> Dashboard
             </a>
             <a href="{{ route('documents.index') }}" class="nav-link {{ request()->routeIs('documents.*') ? 'active' : '' }}">
-                <i class="bi bi-file-earmark-text-fill"></i> Documents
+                <i class="bi bi-file-earmark-text-fill"></i> {{ $documentsLabel }}
             </a>
             <a href="{{ route('qr.index') }}" class="nav-link {{ request()->routeIs('qr.*') ? 'active' : '' }}">
                 <i class="bi bi-qr-code-scan"></i> QR Scanner
@@ -436,7 +439,7 @@
                         html += `
                             <li>
                                 <a class="dropdown-item text-white small" href="#">
-                                    <strong>${item.message}</strong><br>
+                                    <strong>${item.message || item.title || 'Notification'}</strong><br>
                                     <span class="text-secondary" style="font-size: 0.8rem;">${item.time}</span>
                                 </a>
                             </li>

@@ -10,7 +10,9 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $this->authorizeAdmin();
+        if (session('user_role') !== 'ADMIN') {
+            return redirect()->route('profile');
+        }
 
         // Convert table rows into a simple associative array for the view
         $settings = DB::table('settings')->pluck('value', 'key')->toArray();

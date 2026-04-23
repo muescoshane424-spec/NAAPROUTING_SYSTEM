@@ -32,6 +32,34 @@
         height: 100%;
     }
 
+    .alert-custom-close {
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        color: #0f172a;
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        opacity: 0.9;
+    }
+
+    .alert-custom-close:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    .alert-success.alert-dismissible,
+    .alert-info.alert-dismissible {
+        position: relative;
+        padding-right: 5rem;
+    }
+
     .info-label {
         color: var(--text-dim);
         font-size: 0.7rem;
@@ -98,10 +126,12 @@
                 <h6 class="fw-bold mb-4 text-purple"><i class="bi bi-pen me-2"></i>Digital Signature</h6>
                 
                 @if($user->signature)
-                <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
-                    <i class="bi bi-check-circle me-2"></i>
-                    <strong>Signature Saved!</strong> You can edit or upload a new one below.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-info alert-dismissible fade show mb-3" role="alert" style="background: rgba(209, 250, 255, 0.95); color: #0f172a; border: 1px solid rgba(15, 23, 42, 0.12);">
+                    <i class="bi bi-check-circle me-2" style="color: #0f172a;"></i>
+                    <strong style="color: #0f172a;">Signature Saved!</strong> <span style="color: #0f172a;">You can edit or upload a new one below.</span>
+                    <button type="button" class="btn alert-custom-close" data-bs-dismiss="alert" aria-label="Close">
+                        <i class="bi bi-x-lg" style="color: #0f172a;"></i>
+                    </button>
                 </div>
                 <div style="border: 1px solid var(--panel-border); border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center; background: rgba(255,255,255,0.03);">
                     <img src="{{ asset('storage/' . $user->signature) }}" alt="Your Signature" style="max-width: 100%; max-height: 120px; border-radius: 8px;">

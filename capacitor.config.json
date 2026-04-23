@@ -3,7 +3,7 @@
   "appName": "NAAP Routing System",
   "webDir": "public",
   "server": {
-  "url": "https://unplaying-goodly-ines.ngrok-free.dev",
+  "url": "https://character-scarf-dried.ngrok-free.app",
   "cleartext": true
 },
   "android": {
